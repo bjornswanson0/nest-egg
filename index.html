@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 
@@ -125,6 +125,20 @@
       </section>
 
       <section class="card">
+        <h2>Brokerage <button type="button" class="help-btn" data-help="brokerage" aria-label="What is a brokerage account?">?</button></h2>
+        <div class="field-grid">
+          <label class="field"><span>Current balance</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="brokerage.balance" min="0" step="500" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>Monthly contribution</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="brokerage.monthly" min="0" step="25" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>Expected return</span>
+            <span class="control"><input type="number" data-bind="brokerage.returnPct" min="0" max="20" step="0.5" inputmode="decimal"><span class="affix">%/yr</span></span></label>
+        </div>
+      </section>
+
+      <section class="card">
         <h2>Debts <button type="button" class="help-btn" data-help="debts" aria-label="How are debts handled?">?</button></h2>
         <p class="hint">Credit cards, personal loans, car loans — anything with a balance and an APR.</p>
         <div id="debt-list"></div>
@@ -227,7 +241,7 @@
 
         <section class="card">
           <div class="card-head"><h2>Where your next dollar goes</h2></div>
-          <p class="hint" id="waterfall-note">Same monthly budget, two orders. The recommended order follows: employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → savings overflow.</p>
+          <p class="hint" id="waterfall-note">Same monthly budget, two orders. The recommended order follows: employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage.</p>
           <div class="waterfall-grid">
             <table class="mini-table" aria-label="Your plan today, first month">
               <caption>Your plan today <span class="cap-sub">/mo, month one</span></caption>
@@ -259,7 +273,7 @@
           <div class="table-scroll">
             <table id="projection-table">
               <thead>
-                <tr><th scope="col">Age</th><th scope="col">401(k)</th><th scope="col">Roth IRA</th><th scope="col">HSA</th><th scope="col">HYSA</th><th scope="col">Debt</th><th scope="col">Net worth</th><th scope="col">Recommended net worth</th></tr>
+                <tr><th scope="col">Age</th><th scope="col">401(k)</th><th scope="col">Roth IRA</th><th scope="col">HSA</th><th scope="col">HYSA</th><th scope="col">Brokerage</th><th scope="col">Debt</th><th scope="col">Net worth</th><th scope="col">Recommended net worth</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -273,7 +287,7 @@
             <li>Employer match is applied per paycheck up to your match cap — no year-end true-up.</li>
             <li>Annual contribution limits (401(k), IRA, HSA) cap contributions within each year; the blocked dollars keep working elsewhere.</li>
             <li>Extra debt payments go to the highest-APR balance first (avalanche). When a debt is paid off, its old minimum payment rolls into your plan instead of disappearing.</li>
-            <li>The <em>recommended order</em> re-allocates the same monthly budget: employer match → debt at or above your high-interest threshold → emergency fund → HSA → Roth IRA → 401(k) to the annual max → remaining debt → savings overflow. Your plan and the recommended plan always spend identical dollars, so the gap between the two lines is pure ordering.</li>
+            <li>The <em>recommended order</em> re-allocates the same monthly budget: employer match → debt at or above your high-interest threshold → emergency fund → HSA → Roth IRA → 401(k) to the annual max → remaining debt → taxable brokerage. Your plan and the recommended plan always spend identical dollars, so the gap between the two lines is pure ordering.</li>
             <li>Your nest-egg goal is monthly spending × 12, inflated to retirement age, divided by your withdrawal rate (the "4% rule" by default).</li>
             <li>Taxes aren't modeled — pre-tax and Roth dollars are both taken at face value, so treat results as directional, not gospel.</li>
           </ul>
@@ -301,8 +315,8 @@
   </div>
 </template>
 
-<script src="js/engine.js?v=1"></script>
+<script src="js/engine.js?v=2"></script>
 <script src="js/charts.js?v=1"></script>
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>

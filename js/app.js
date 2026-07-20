@@ -18,6 +18,7 @@
     roth: { balance: '', monthly: '', returnPct: 7 },
     hsa: { eligible: false, balance: '', monthly: '', returnPct: 7 },
     hysa: { balance: '', apyPct: 3.5, monthly: '', efTarget: '' },
+    brokerage: { balance: '', monthly: '', returnPct: 7 },
     debts: [],
     extraDebtMonthly: '',
     goals: { retireSpendMonthly: '', inflationPct: 2.5, swrPct: 4 },
@@ -33,6 +34,7 @@
     roth: { balance: 12000, monthly: 300, returnPct: 7 },
     hsa: { eligible: true, balance: 5000, monthly: 150, returnPct: 7 },
     hysa: { balance: 8000, apyPct: 3.8, monthly: 200, efTarget: 15000 },
+    brokerage: { balance: 15000, monthly: 250, returnPct: 7 },
     debts: [
       { name: 'Credit card', balance: 6200, aprPct: 23.5, minPayment: 140 },
       { name: 'Car loan', balance: 9800, aprPct: 6.9, minPayment: 310 }
@@ -191,6 +193,10 @@
       title: 'What’s an HSA?',
       body: 'A health savings account with the best tax treatment there is: pre-tax going in, untaxed growth, untaxed coming out for medical costs — and after 65 it behaves like a 401(k) for any spending. Requires a high-deductible health plan.'
     },
+    brokerage: {
+      title: 'What’s a brokerage account?',
+      body: 'A regular investment account with no tax breaks — but no rules either: no contribution limits, no income caps, withdraw whenever. It’s where money goes after the tax-advantaged accounts are maxed, and long-held gains get favorable capital-gains rates.'
+    },
     hysa: {
       title: 'High-yield savings',
       body: 'A savings account that pays real interest (good ones are around 4%). It’s for money you can’t afford to risk — your emergency fund, near-term goals. It won’t beat the market, and that’s exactly the point.'
@@ -311,7 +317,7 @@
 
     var gross = salary / 12;
     var fa = a.current.firstAlloc;
-    var saved = fa ? fa.k401 + fa.roth + fa.hsa + fa.hysa + fa.debtExtra : 0;
+    var saved = fa ? fa.k401 + fa.roth + fa.hsa + fa.hysa + fa.brok + fa.debtExtra : 0;
     var savedTotal = saved + (fa ? fa.match : 0);
     var rate = savedTotal / gross * 100;
     var onePct = salary / 100 / 12;
@@ -373,7 +379,7 @@
       if (m.age < p.currentAge - 5 || m.age > p.retirementAge || shown >= 5) return;
       var ratio, label;
       if (m.age <= p.currentAge) {
-        ratio = (inp.k401.balance + inp.roth.balance + inp.hsa.balance + inp.hysa.balance) / salary;
+        ratio = (inp.k401.balance + inp.roth.balance + inp.hsa.balance + inp.hysa.balance + inp.brokerage.balance) / salary;
         label = 'you now: ';
       } else {
         var idx = Math.min(a.current.series.length - 1, Math.round((m.age - p.currentAge) * 12) - 1);
@@ -435,7 +441,8 @@
     { key: 'k401', name: '401(k)', color: '--s1' },
     { key: 'roth', name: 'Roth IRA', color: '--s2' },
     { key: 'hsa', name: 'HSA', color: '--s3' },
-    { key: 'hysa', name: 'HYSA', color: '--s4' }
+    { key: 'hysa', name: 'HYSA', color: '--s4' },
+    { key: 'brok', name: 'Brokerage', color: '--s5' }
   ];
   var chartMix = NestEggCharts.makeChart(document.getElementById('chart-mix'), {
     mode: 'stacked', height: 220, endLabels: false, xMeta: chartXMeta,
@@ -486,6 +493,7 @@
     allocRow(tbodyCur, 'Roth IRA', cur.roth);
     allocRow(tbodyCur, 'HSA', cur.hsa);
     allocRow(tbodyCur, 'HYSA', cur.hysa);
+    allocRow(tbodyCur, 'Brokerage', cur.brok);
     allocRow(tbodyCur, 'Debt minimums', cur.minimums);
     allocRow(tbodyCur, 'Extra to debt', cur.debtExtra);
 
@@ -497,7 +505,7 @@
     allocRow(tbodyRec, '5 · Roth IRA', s.roth);
     allocRow(tbodyRec, '6 · 401(k) toward max', s.k401Max);
     allocRow(tbodyRec, '7 · Remaining debt', s.lowDebt);
-    allocRow(tbodyRec, '8 · Savings overflow', s.overflow);
+    allocRow(tbodyRec, '8 · Brokerage (taxable)', s.overflow);
     allocRow(tbodyRec, 'Employer match (unchanged)', rec.match);
     allocRow(tbodyRec, 'Debt minimums (unchanged)', rec.minimums);
   }
@@ -514,7 +522,7 @@
       var cells = [
         Math.round(p.age),
         fmtMoneyFull(p.k401), fmtMoneyFull(p.roth), fmtMoneyFull(p.hsa), fmtMoneyFull(p.hysa),
-        fmtMoneyFull(p.debt), fmtMoneyFull(p.netWorth), fmtMoneyFull(r.netWorth)
+        fmtMoneyFull(p.brok), fmtMoneyFull(p.debt), fmtMoneyFull(p.netWorth), fmtMoneyFull(r.netWorth)
       ];
       cells.forEach(function (c, j) {
         var td = document.createElement(j === 0 ? 'th' : 'td');
@@ -607,7 +615,7 @@
     chartProjection.update(proj, goal);
 
     chartMix.update(cs.map(function (pt) {
-      return { age: pt.age, k401: pt.k401, roth: pt.roth, hsa: pt.hsa, hysa: pt.hysa };
+      return { age: pt.age, k401: pt.k401, roth: pt.roth, hsa: pt.hsa, hysa: pt.hysa, brok: pt.brok };
     }));
 
     el('debt-card').hidden = !hasDebt;

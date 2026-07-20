@@ -8,9 +8,9 @@
 
 Most retirement calculators project one account and ignore your credit card. Nest Egg simulates your full financial picture month by month to retirement:
 
-- **All four account types** — 401(k) with employer match, Roth IRA, HSA, and HYSA, each with its own balance, contributions, and expected return.
+- **All five account types** — 401(k) with employer match, Roth IRA, HSA, HYSA, and a taxable brokerage, each with its own balance, contributions, and expected return.
 - **Debt, done right** — multiple debts with APRs and minimums, paid down avalanche-style (highest APR first). When a debt dies, its old minimum payment rolls forward instead of vanishing.
-- **Two plans, same dollars** — it runs *your* plan against a **recommended order** (employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → overflow) using the identical monthly budget, so the gap between the two lines is pure ordering.
+- **Two plans, same dollars** — it runs *your* plan against a **recommended order** (employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage) using the identical monthly budget, so the gap between the two lines is pure ordering.
 - **Retirement readiness** — a nest-egg goal from your spending target and withdrawal rate, coverage percentage, debt-free date, and interest saved.
 
 ## Privacy

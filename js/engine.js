@@ -42,6 +42,11 @@
         monthly: g(raw.hysa, 'monthly'),
         efTarget: g(raw.hysa, 'efTarget')
       },
+      brokerage: {
+        balance: g(raw.brokerage, 'balance'),
+        monthly: g(raw.brokerage, 'monthly'),
+        returnPct: g(raw.brokerage, 'returnPct')
+      },
       debts: (raw.debts || []).map(function (d) {
         return {
           name: (d && d.name) || 'Debt',
@@ -74,7 +79,7 @@
      Both strategies draw on the same budget so the comparison is fair. */
   function allocate(strategy, ctx) {
     var inp = ctx.inputs, ytd = ctx.ytd, lim = inp.limits;
-    var a = { k401: 0, roth: 0, hsa: 0, hysa: 0, debtExtra: 0, steps: null };
+    var a = { k401: 0, roth: 0, hsa: 0, hysa: 0, brok: 0, debtExtra: 0, steps: null };
 
     if (strategy === 'current') {
       var planned401k = ctx.salary * inp.k401.contribPct / 100;
@@ -82,6 +87,7 @@
       a.roth = Math.min(inp.roth.monthly, room(lim.ira, ytd.roth));
       a.hsa = inp.hsa.eligible ? Math.min(inp.hsa.monthly, room(lim.hsa, ytd.hsa)) : 0;
       a.hysa = inp.hysa.monthly;
+      a.brok = inp.brokerage.monthly;
       /* Dollars blocked by annual limits, plus freed-up minimums, keep working:
          toward debt while any remains, into savings after. */
       var spill = (planned401k - a.k401) + (inp.roth.monthly - a.roth) +
@@ -92,7 +98,7 @@
     }
 
     /* Recommended order: match → high-APR debt → emergency fund → HSA → Roth →
-       max 401(k) → remaining debt → overflow to HYSA. */
+       max 401(k) → remaining debt → overflow to taxable brokerage. */
     var rem = ctx.budget;
     var steps = { match: 0, hiDebt: 0, ef: 0, hsa: 0, roth: 0, k401Max: 0, lowDebt: 0, overflow: 0 };
 
@@ -119,7 +125,7 @@
     var s7 = Math.min(rem, Math.max(0, ctx.debtRemaining - ctx.hiDebtRemaining));
     a.debtExtra += s7; steps.lowDebt = s7; rem -= s7;
 
-    a.hysa += rem; steps.overflow = rem;
+    a.brok += rem; steps.overflow = rem;
     a.steps = steps;
     return a;
   }
@@ -132,13 +138,15 @@
       k401: inputs.k401.balance,
       roth: inputs.roth.balance,
       hsa: inputs.hsa.balance,
-      hysa: inputs.hysa.balance
+      hysa: inputs.hysa.balance,
+      brok: inputs.brokerage.balance
     };
     var rate = {
       k401: monthlyRate(inputs.k401.returnPct),
       roth: monthlyRate(inputs.roth.returnPct),
       hsa: monthlyRate(inputs.hsa.returnPct),
-      hysa: monthlyRate(inputs.hysa.apyPct)
+      hysa: monthlyRate(inputs.hysa.apyPct),
+      brok: monthlyRate(inputs.brokerage.returnPct)
     };
     var debts = inputs.debts.map(function (d) {
       return { name: d.name, balance: d.balance, aprPct: d.aprPct, minPayment: d.minPayment };
@@ -159,7 +167,8 @@
       var planned401k = salary * inputs.k401.contribPct / 100;
       var budget = planned401k + inputs.roth.monthly +
         (inputs.hsa.eligible ? inputs.hsa.monthly : 0) +
-        inputs.hysa.monthly + inputs.extraDebtMonthly + freedMinimums;
+        inputs.hysa.monthly + inputs.brokerage.monthly +
+        inputs.extraDebtMonthly + freedMinimums;
 
       var hiDebtRemaining = debts.reduce(function (s, d) {
         return s + (d.aprPct >= inputs.limits.highAprPct ? Math.max(0, d.balance) : 0);
@@ -178,7 +187,7 @@
       if (!firstAlloc) {
         firstAlloc = {
           k401: alloc.k401, match: match, roth: alloc.roth, hsa: alloc.hsa,
-          hysa: alloc.hysa, debtExtra: alloc.debtExtra,
+          hysa: alloc.hysa, brok: alloc.brok, debtExtra: alloc.debtExtra,
           minimums: debts.reduce(function (s, d) { return s + (d.balance > 0 ? d.minPayment : 0); }, 0),
           steps: alloc.steps, budget: budget
         };
@@ -188,6 +197,7 @@
       bal.roth += alloc.roth;
       bal.hsa += alloc.hsa;
       bal.hysa += alloc.hysa;
+      bal.brok += alloc.brok;
 
       /* Debts: accrue interest, pay minimums, then extra by highest APR. */
       var i, d, pay;
@@ -222,23 +232,25 @@
       bal.roth *= 1 + rate.roth;
       bal.hsa *= 1 + rate.hsa;
       bal.hysa *= 1 + rate.hysa;
+      bal.brok *= 1 + rate.brok;
 
       var debtNow = totalDebt(debts);
+      var investedNow = bal.k401 + bal.roth + bal.hsa + bal.hysa + bal.brok;
       series.push({
         month: m + 1,
         age: p.currentAge + (m + 1) / 12,
-        k401: bal.k401, roth: bal.roth, hsa: bal.hsa, hysa: bal.hysa,
+        k401: bal.k401, roth: bal.roth, hsa: bal.hsa, hysa: bal.hysa, brok: bal.brok,
         debt: debtNow,
-        invested: bal.k401 + bal.roth + bal.hsa + bal.hysa,
-        netWorth: bal.k401 + bal.roth + bal.hsa + bal.hysa - debtNow
+        invested: investedNow,
+        netWorth: investedNow - debtNow
       });
     }
 
     var last = series.length ? series[series.length - 1] : {
       month: 0, age: p.currentAge, k401: bal.k401, roth: bal.roth, hsa: bal.hsa,
-      hysa: bal.hysa, debt: totalDebt(debts),
-      invested: bal.k401 + bal.roth + bal.hsa + bal.hysa,
-      netWorth: bal.k401 + bal.roth + bal.hsa + bal.hysa - totalDebt(debts)
+      hysa: bal.hysa, brok: bal.brok, debt: totalDebt(debts),
+      invested: bal.k401 + bal.roth + bal.hsa + bal.hysa + bal.brok,
+      netWorth: bal.k401 + bal.roth + bal.hsa + bal.hysa + bal.brok - totalDebt(debts)
     };
     return {
       strategy: strategy, series: series, final: last,

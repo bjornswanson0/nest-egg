@@ -96,13 +96,24 @@
   c8.profile.annualIncome = 90000;
   c8.k401.contribPct = 5; c8.k401.matchRatePct = 100; c8.k401.matchCapPct = 4;
   c8.roth.monthly = 200; c8.hysa.monthly = 300; c8.extraDebtMonthly = 100;
+  c8.brokerage = { balance: 0, monthly: 150, returnPct: 7 };
   c8.debts = [{ name: 'loan', balance: 8000, aprPct: 11, minPayment: 150 }];
   var cur8 = NestEgg.simulate(NestEgg.normalize(c8), 'current');
   var rec8 = NestEgg.simulate(NestEgg.normalize(c8), 'recommended');
-  var spend = function (fa) { return fa.k401 + fa.roth + fa.hsa + fa.hysa + fa.debtExtra; };
+  var spend = function (fa) { return fa.k401 + fa.roth + fa.hsa + fa.hysa + fa.brok + fa.debtExtra; };
   t('month-1 budgets match across strategies',
     near(spend(cur8.firstAlloc), spend(rec8.firstAlloc), 0.01),
     spend(cur8.firstAlloc) + ' vs ' + spend(rec8.firstAlloc));
+
+  /* 8b. Overflow past every limit lands in the taxable brokerage */
+  var c8b = clone(blank);
+  c8b.profile.annualIncome = 60000;
+  c8b.brokerage = { balance: 0, monthly: 1000, returnPct: 7 };
+  c8b.limits = { k401: 300, ira: 300, hsa: 4400, highAprPct: 7 };
+  var r8b = NestEgg.simulate(NestEgg.normalize(c8b), 'recommended');
+  t('rec: roth takes 300 (tiny limit)', near(r8b.firstAlloc.steps.roth, 300, 0.01), r8b.firstAlloc.steps.roth);
+  t('rec: 401k takes 300 (tiny limit)', near(r8b.firstAlloc.steps.k401Max, 300, 0.01), r8b.firstAlloc.steps.k401Max);
+  t('rec: 400 overflow lands in brokerage', near(r8b.firstAlloc.brok, 400, 0.01), r8b.firstAlloc.brok);
 
   /* 9. Zero/blank inputs do not blow up */
   var a9 = NestEgg.analyze({});
