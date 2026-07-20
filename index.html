@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=1">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 
@@ -62,16 +62,16 @@
       </section>
 
       <section class="card">
-        <h2>401(k)</h2>
+        <h2>401(k) <button type="button" class="help-btn" data-help="k401" aria-label="What is a 401(k)?">?</button></h2>
         <div class="field-grid">
           <label class="field span2"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
               <input type="number" data-bind="k401.balance" min="0" step="500" inputmode="decimal" placeholder="0"></span></label>
           <label class="field"><span>You contribute</span>
             <span class="control"><input type="number" data-bind="k401.contribPct" min="0" max="100" step="0.5" inputmode="decimal" placeholder="6"><span class="affix">% of pay</span></span></label>
-          <label class="field"><span>Expected return</span>
+          <label class="field"><span>Expected return <button type="button" class="help-btn" data-help="returns" aria-label="What is expected return?">?</button></span>
             <span class="control"><input type="number" data-bind="k401.returnPct" min="0" max="20" step="0.5" inputmode="decimal"><span class="affix">%/yr</span></span></label>
-          <label class="field"><span>Employer matches</span>
+          <label class="field"><span>Employer matches <button type="button" class="help-btn" data-help="match" aria-label="How does an employer match work?">?</button></span>
             <span class="control"><input type="number" data-bind="k401.matchRatePct" min="0" max="200" step="5" inputmode="decimal" placeholder="50"><span class="affix">%</span></span></label>
           <label class="field"><span>…of the first</span>
             <span class="control"><input type="number" data-bind="k401.matchCapPct" min="0" max="100" step="0.5" inputmode="decimal" placeholder="6"><span class="affix">% of pay</span></span></label>
@@ -79,7 +79,7 @@
       </section>
 
       <section class="card">
-        <h2>Roth IRA</h2>
+        <h2>Roth IRA <button type="button" class="help-btn" data-help="roth" aria-label="What is a Roth IRA?">?</button></h2>
         <div class="field-grid">
           <label class="field"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -93,7 +93,7 @@
       </section>
 
       <section class="card">
-        <h2>HSA</h2>
+        <h2>HSA <button type="button" class="help-btn" data-help="hsa" aria-label="What is an HSA?">?</button></h2>
         <label class="check"><input type="checkbox" data-bind="hsa.eligible"> I have an HSA-eligible health plan</label>
         <div class="field-grid hsa-fields">
           <label class="field"><span>Current balance</span>
@@ -108,7 +108,7 @@
       </section>
 
       <section class="card">
-        <h2>High-yield savings</h2>
+        <h2>High-yield savings <button type="button" class="help-btn" data-help="hysa" aria-label="What is a high-yield savings account?">?</button></h2>
         <div class="field-grid">
           <label class="field"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -118,19 +118,19 @@
               <input type="number" data-bind="hysa.monthly" min="0" step="25" inputmode="decimal" placeholder="0"></span></label>
           <label class="field"><span>APY</span>
             <span class="control"><input type="number" data-bind="hysa.apyPct" min="0" max="10" step="0.1" inputmode="decimal"><span class="affix">%</span></span></label>
-          <label class="field"><span>Emergency fund goal</span>
+          <label class="field"><span>Emergency fund goal <button type="button" class="help-btn" data-help="ef" aria-label="What is an emergency fund?">?</button></span>
             <span class="control"><span class="affix">$</span>
               <input type="number" data-bind="hysa.efTarget" min="0" step="1000" inputmode="decimal" placeholder="15,000"></span></label>
         </div>
       </section>
 
       <section class="card">
-        <h2>Debts</h2>
+        <h2>Debts <button type="button" class="help-btn" data-help="debts" aria-label="How are debts handled?">?</button></h2>
         <p class="hint">Credit cards, personal loans, car loans — anything with a balance and an APR.</p>
         <div id="debt-list"></div>
         <button type="button" id="add-debt" class="ghost-btn">+ Add a debt</button>
         <div class="field-grid">
-          <label class="field span2"><span>Extra toward debt each month <small>(beyond minimums)</small></span>
+          <label class="field span2"><span>Extra toward debt each month <small>(beyond minimums)</small> <button type="button" class="help-btn" data-help="extraDebt" aria-label="Why pay extra toward debt?">?</button></span>
             <span class="control"><span class="affix">$</span>
               <input type="number" data-bind="extraDebtMonthly" min="0" step="25" inputmode="decimal" placeholder="0"></span></label>
         </div>
@@ -142,9 +142,9 @@
           <label class="field span2"><span>Monthly spending in retirement <small>(today's dollars)</small></span>
             <span class="control"><span class="affix">$</span>
               <input type="number" data-bind="goals.retireSpendMonthly" min="0" step="250" inputmode="decimal" placeholder="5,000"></span></label>
-          <label class="field"><span>Inflation</span>
+          <label class="field"><span>Inflation <button type="button" class="help-btn" data-help="inflation" aria-label="How is inflation used?">?</button></span>
             <span class="control"><input type="number" data-bind="goals.inflationPct" min="0" max="10" step="0.1" inputmode="decimal"><span class="affix">%/yr</span></span></label>
-          <label class="field"><span>Withdrawal rate</span>
+          <label class="field"><span>Withdrawal rate <button type="button" class="help-btn" data-help="swr" aria-label="What is a withdrawal rate?">?</button></span>
             <span class="control"><input type="number" data-bind="goals.swrPct" min="1" max="10" step="0.25" inputmode="decimal"><span class="affix">%/yr</span></span></label>
         </div>
         <details class="advanced">
@@ -159,7 +159,7 @@
             <label class="field"><span>HSA limit</span>
               <span class="control"><span class="affix">$</span>
                 <input type="number" data-bind="limits.hsa" min="0" step="50" inputmode="decimal"></span></label>
-            <label class="field"><span>"High interest" means ≥</span>
+            <label class="field"><span>"High interest" means ≥ <button type="button" class="help-btn" data-help="highApr" aria-label="What counts as high-interest debt?">?</button></span>
               <span class="control"><input type="number" data-bind="limits.highAprPct" min="0" max="30" step="0.5" inputmode="decimal"><span class="affix">% APR</span></span></label>
           </div>
         </details>
@@ -201,6 +201,19 @@
             <span class="tile-sub" id="kpi-boost-sub">—</span>
           </div>
         </div>
+
+        <section class="card" id="insights-card">
+          <div class="card-head">
+            <h2>Coaching corner</h2>
+            <span class="hint" style="margin-bottom:0">personalized to your salary and plan</span>
+          </div>
+          <div id="insights"></div>
+          <div id="milestones-wrap" hidden>
+            <h3 class="ms-title">Savings benchmarks for your salary</h3>
+            <p class="hint">A common rule of thumb: retirement savings as a multiple of your salary at each age.</p>
+            <div class="milestones" id="milestones"></div>
+          </div>
+        </section>
 
         <section class="card chart-card">
           <div class="card-head">
@@ -290,6 +303,6 @@
 
 <script src="js/engine.js?v=1"></script>
 <script src="js/charts.js?v=1"></script>
-<script src="js/app.js?v=1"></script>
+<script src="js/app.js?v=2"></script>
 </body>
 </html>

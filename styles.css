@@ -269,6 +269,87 @@ input[type="number"]:focus, input[type="text"]:focus {
 }
 .debt-remove:hover { color: var(--crit); }
 
+/* ---------- field help ---------- */
+
+.help-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--axis);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: 2px;
+  padding: 0;
+  margin-left: 2px;
+}
+.help-btn:hover { color: var(--accent); border-color: var(--accent); }
+h2 .help-btn { width: 17px; height: 17px; vertical-align: 2px; }
+
+.help-pop {
+  position: fixed;
+  z-index: 60;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.16);
+  padding: 10px 13px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.help-pop-title { font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+
+/* ---------- coaching corner ---------- */
+
+#insights { display: grid; gap: 12px; }
+
+.insight {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 9px;
+  align-items: start;
+}
+.insight-ic {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.tone-good .insight-ic { background: color-mix(in srgb, var(--good) 15%, var(--surface)); color: var(--good-text); }
+.tone-warn .insight-ic { background: color-mix(in srgb, var(--warn) 20%, var(--surface)); color: var(--ink); }
+.tone-crit .insight-ic { background: color-mix(in srgb, var(--crit) 14%, var(--surface)); color: var(--crit); }
+.tone-info .insight-ic { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+
+.insight-title { font-weight: 600; font-size: 13.5px; }
+.insight-body { font-size: 13px; color: var(--ink-2); margin-top: 1px; }
+
+.ms-title { font-size: 13px; font-weight: 600; margin: 18px 0 2px; }
+
+.milestones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.ms-chip {
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 8px 12px;
+  display: grid;
+  gap: 2px;
+  min-width: 104px;
+}
+.ms-goal { font-size: 12px; color: var(--ink-2); }
+.ms-you { font-size: 13px; font-weight: 600; }
+.ms-you.good { color: var(--good-text); }
+.ms-you.warn { color: var(--ink); }
+.ms-you.crit { color: var(--crit); }
+
 /* ---------- results: empty state ---------- */
 
 .empty-state {

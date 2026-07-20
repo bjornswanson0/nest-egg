@@ -169,6 +169,235 @@
   });
   applyThemeMeta();
 
+  /* ---------- field help (the "?" popovers) ---------- */
+  var HELP = {
+    k401: {
+      title: 'What’s a 401(k)?',
+      body: 'A retirement account through your employer. Money leaves your paycheck before you see it, grows tax-advantaged, and many employers add matching money on top of yours. The match is part of your pay — always capture all of it.'
+    },
+    match: {
+      title: 'How the match works',
+      body: '“50% of the first 6%” means: put in 6% of your pay and your employer adds another 3% for free. Contribute less than the cap and part of that free money simply never gets paid to you.'
+    },
+    returns: {
+      title: 'Expected return',
+      body: 'Your guess at average yearly growth. Diversified stock funds have averaged roughly 7% a year after inflation over long stretches; bonds and cash are lower. Use a smaller number to be conservative — the future isn’t obligated to match the past.'
+    },
+    roth: {
+      title: 'What’s a Roth IRA?',
+      body: 'You fund it with money you’ve already paid taxes on, and in exchange it grows and comes out in retirement completely tax-free. There’s a yearly cap, and at higher incomes the front door closes (a “backdoor” contribution still works).'
+    },
+    hsa: {
+      title: 'What’s an HSA?',
+      body: 'A health savings account with the best tax treatment there is: pre-tax going in, untaxed growth, untaxed coming out for medical costs — and after 65 it behaves like a 401(k) for any spending. Requires a high-deductible health plan.'
+    },
+    hysa: {
+      title: 'High-yield savings',
+      body: 'A savings account that pays real interest (good ones are around 4%). It’s for money you can’t afford to risk — your emergency fund, near-term goals. It won’t beat the market, and that’s exactly the point.'
+    },
+    ef: {
+      title: 'Emergency fund',
+      body: 'Cash for when life happens — job loss, medical bill, the car. A common target is 3–6 months of expenses. The recommended order fills this early because expensive debt is usually what happens to people who don’t have one.'
+    },
+    debts: {
+      title: 'How debts are handled',
+      body: 'List each balance with its APR (yearly interest rate) and minimum payment. Extra payments go to the highest APR first — the “avalanche” — which mathematically minimizes total interest paid. When a debt dies, its minimum rolls into your plan.'
+    },
+    extraDebt: {
+      title: 'Why pay extra?',
+      body: 'Every extra dollar thrown at a 20% APR balance earns you a guaranteed, tax-free 20% by not being owed anymore. No investment reliably promises that, which is why high-APR debt outranks most investing.'
+    },
+    inflation: {
+      title: 'How inflation is used',
+      body: 'Prices creep up ~2–3% a year, so a dollar at retirement buys less than one today. It’s used here to size your spending goal at retirement age and to translate big future numbers into honest today’s-dollar equivalents.'
+    },
+    swr: {
+      title: 'Withdrawal rate',
+      body: 'The share of your nest egg you draw each year once retired. The classic “4% rule”: a $1M portfolio supports about $40K a year with good odds of lasting 30+ years. Lower is safer; higher is optimistic.'
+    },
+    highApr: {
+      title: 'What counts as “high interest”?',
+      body: 'Debt above this APR gets treated as an emergency — paid off before most investing — because interest saved is a guaranteed return that beats an expected one. Below it, minimum payments plus investing usually wins. ~7% is a common dividing line.'
+    }
+  };
+
+  var pop = document.createElement('div');
+  pop.className = 'help-pop';
+  pop.hidden = true;
+  pop.setAttribute('role', 'note');
+  document.body.appendChild(pop);
+  var popFor = null;
+
+  function closePop() {
+    if (popFor) popFor.setAttribute('aria-expanded', 'false');
+    popFor = null;
+    pop.hidden = true;
+  }
+
+  document.querySelectorAll('.help-btn').forEach(function (btn) {
+    btn.setAttribute('aria-expanded', 'false');
+    btn.addEventListener('click', function (ev) {
+      ev.preventDefault(); /* keep the wrapping <label> from stealing focus */
+      ev.stopPropagation();
+      if (popFor === btn) { closePop(); return; }
+      var h = HELP[btn.getAttribute('data-help')];
+      if (!h) return;
+      pop.textContent = '';
+      var t = document.createElement('div');
+      t.className = 'help-pop-title';
+      t.textContent = h.title;
+      var b = document.createElement('p');
+      b.textContent = h.body;
+      pop.appendChild(t); pop.appendChild(b);
+      pop.hidden = false;
+      var w = Math.min(300, window.innerWidth - 24);
+      pop.style.maxWidth = w + 'px';
+      var r = btn.getBoundingClientRect();
+      pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - w - 12)) + 'px';
+      pop.style.top = (r.bottom + 8) + 'px';
+      var ph = pop.offsetHeight;
+      if (r.bottom + 8 + ph > window.innerHeight - 8) {
+        pop.style.top = Math.max(8, r.top - ph - 8) + 'px';
+      }
+      if (popFor) popFor.setAttribute('aria-expanded', 'false');
+      popFor = btn;
+      btn.setAttribute('aria-expanded', 'true');
+    });
+  });
+  document.addEventListener('click', function (ev) {
+    if (!pop.hidden && !pop.contains(ev.target)) closePop();
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') closePop(); });
+  window.addEventListener('scroll', closePop, { passive: true });
+
+  /* ---------- coaching corner (salary-based education) ---------- */
+  var BENCH = [
+    { age: 30, mult: 1 }, { age: 35, mult: 2 }, { age: 40, mult: 3 }, { age: 45, mult: 4 },
+    { age: 50, mult: 6 }, { age: 55, mult: 7 }, { age: 60, mult: 8 }, { age: 67, mult: 10 }
+  ];
+
+  function insightRow(host, tone, glyph, title, body) {
+    var row = document.createElement('div');
+    row.className = 'insight tone-' + tone;
+    var ic = document.createElement('span');
+    ic.className = 'insight-ic';
+    ic.setAttribute('aria-hidden', 'true');
+    ic.textContent = glyph;
+    var box = document.createElement('div');
+    var t = document.createElement('div');
+    t.className = 'insight-title';
+    t.textContent = title;
+    var b = document.createElement('p');
+    b.className = 'insight-body';
+    b.textContent = body;
+    box.appendChild(t); box.appendChild(b);
+    row.appendChild(ic); row.appendChild(box);
+    host.appendChild(row);
+  }
+
+  function renderInsights(a) {
+    var host = el('insights');
+    host.textContent = '';
+    var inp = a.inputs, p = inp.profile;
+    var salary = p.annualIncome;
+    var retAge = Math.round(p.retirementAge);
+
+    if (!salary) {
+      insightRow(host, 'info', 'i', 'Add your salary to unlock coaching',
+        'Most of this panel — savings rate, employer-match math, benchmarks — is computed from your income.');
+      el('milestones-wrap').hidden = true;
+      return;
+    }
+
+    var gross = salary / 12;
+    var fa = a.current.firstAlloc;
+    var saved = fa ? fa.k401 + fa.roth + fa.hsa + fa.hysa + fa.debtExtra : 0;
+    var savedTotal = saved + (fa ? fa.match : 0);
+    var rate = savedTotal / gross * 100;
+    var onePct = salary / 100 / 12;
+
+    var tone = rate >= 15 ? 'good' : rate >= 10 ? 'warn' : 'crit';
+    insightRow(host, tone, tone === 'good' ? '✓' : '!',
+      'You’re saving ' + Math.round(rate) + '% of your income',
+      fmtMoneyFull(savedTotal) + ' of your ' + fmtMoneyFull(gross) + ' gross monthly pay goes toward your future (employer match and extra debt payments included). The classic guideline is 15–20% of gross. For you, each 1% of salary is ' + fmtMoneyFull(onePct) + '/mo.');
+
+    if (inp.k401.matchRatePct > 0 && inp.k401.matchCapPct > 0) {
+      if (inp.k401.contribPct >= inp.k401.matchCapPct) {
+        var worth = inp.k401.matchRatePct / 100 * inp.k401.matchCapPct / 100 * salary;
+        insightRow(host, 'good', '✓',
+          'Full employer match captured — worth ' + fmtMoney(worth) + '/yr',
+          'Contributing ' + inp.k401.contribPct + '% of pay collects every matched dollar: an instant ' + inp.k401.matchRatePct + '% return on those contributions before the market does anything.');
+      } else {
+        var missed = inp.k401.matchRatePct / 100 * (inp.k401.matchCapPct - inp.k401.contribPct) / 100 * salary;
+        insightRow(host, 'crit', '!',
+          'You’re leaving ' + fmtMoney(missed) + '/yr of free money on the table',
+          'Your employer matches up to ' + inp.k401.matchCapPct + '% of pay, but you contribute ' + (inp.k401.contribPct || 0) + '%. Raising it to ' + inp.k401.matchCapPct + '% captures a guaranteed ' + inp.k401.matchRatePct + '% return — that’s step 1 of the recommended order for a reason.');
+      }
+    }
+
+    /* the compounding lesson: re-run the sim with +1% of salary to the 401(k) */
+    var plus = clone(state);
+    plus.k401.contribPct = (parseFloat(plus.k401.contribPct) || 0) + 1;
+    var delta = NestEgg.analyze(plus).current.final.invested - a.current.final.invested;
+    if (delta > 0) {
+      insightRow(host, 'info', '↑',
+        'One more 1% today ≈ ' + fmtMoney(delta) + ' at ' + retAge,
+        'Bumping your 401(k) contribution by a single point costs ' + fmtMoneyFull(onePct) + '/mo from your current paycheck, but compounds into roughly ' + fmtMoney(delta) + ' by retirement. Small levers, decades of leverage.');
+    }
+
+    var topApr = 0;
+    inp.debts.forEach(function (d) { if (d.aprPct >= inp.limits.highAprPct && d.aprPct > topApr) topApr = d.aprPct; });
+    if (topApr > 0) {
+      insightRow(host, 'warn', '!',
+        'Your ' + topApr + '% APR debt outranks the market',
+        'Paying it down is a guaranteed, tax-free ' + topApr + '% return — better than the ~' + (inp.k401.returnPct || 7) + '% you expect from investments. That’s why it sits right after the match in the recommended order.');
+    }
+
+    if (inp.hsa.eligible && !inp.hsa.monthly) {
+      insightRow(host, 'info', 'i',
+        'Your HSA is sitting idle',
+        'It’s the only triple-tax-advantaged account — pre-tax in, tax-free growth, tax-free out for medical costs, and 401(k)-like after 65. Even $50/mo builds a real health buffer.');
+    }
+
+    if (salary >= 140000) {
+      insightRow(host, 'info', 'i',
+        'Heads up: Roth IRA income limits',
+        'Around $153K of income (single filers, 2026) the direct Roth IRA door starts to close. The standard workaround is the “backdoor Roth”: contribute to a traditional IRA, then convert.');
+    }
+
+    /* salary-multiple milestones */
+    var wrap = el('milestones-wrap'), ms = el('milestones');
+    ms.textContent = '';
+    var shown = 0;
+    BENCH.forEach(function (m) {
+      if (m.age < p.currentAge - 5 || m.age > p.retirementAge || shown >= 5) return;
+      var ratio, label;
+      if (m.age <= p.currentAge) {
+        ratio = (inp.k401.balance + inp.roth.balance + inp.hsa.balance + inp.hysa.balance) / salary;
+        label = 'you now: ';
+      } else {
+        var idx = Math.min(a.current.series.length - 1, Math.round((m.age - p.currentAge) * 12) - 1);
+        if (idx < 0) return;
+        var salThen = salary * Math.pow(1 + p.incomeGrowthPct / 100, m.age - p.currentAge);
+        ratio = a.current.series[idx].invested / salThen;
+        label = 'projected: ';
+      }
+      shown++;
+      var msTone = ratio >= m.mult ? 'good' : ratio >= m.mult * 0.75 ? 'warn' : 'crit';
+      var chip = document.createElement('div');
+      chip.className = 'ms-chip';
+      var goal = document.createElement('span');
+      goal.className = 'ms-goal';
+      goal.textContent = m.mult + '× salary by ' + m.age;
+      var you = document.createElement('span');
+      you.className = 'ms-you ' + msTone;
+      you.textContent = (msTone === 'good' ? '✓ ' : msTone === 'warn' ? '~ ' : '✗ ') + label + ratio.toFixed(1) + '×';
+      chip.appendChild(goal); chip.appendChild(you);
+      ms.appendChild(chip);
+    });
+    wrap.hidden = shown === 0;
+  }
+
   /* ---------- charts ---------- */
   function makeLegend(host, items, kind) {
     host.textContent = '';
@@ -394,6 +623,7 @@
       chartDebt.update(debtPts);
     }
 
+    renderInsights(a);
     renderAllocTables(a);
     renderTable(a);
   }
