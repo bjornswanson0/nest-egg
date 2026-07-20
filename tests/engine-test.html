@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Nest Egg engine tests</title>
+</head>
+<body>
+<pre id="out"></pre>
+<script src="../js/engine.js"></script>
+<script>
+(function () {
+  'use strict';
+  var out = [];
+  function t(name, cond, detail) {
+    out.push((cond ? 'PASS' : 'FAIL') + ' | ' + name + (cond ? '' : ' | got: ' + detail));
+  }
+  function near(a, b, tol) { return Math.abs(a - b) <= tol; }
+
+  var blank = {
+    profile: { currentAge: 30, retirementAge: 40, annualIncome: 0, incomeGrowthPct: 0 },
+    k401: { balance: 0, contribPct: 0, matchRatePct: 0, matchCapPct: 0, returnPct: 0 },
+    roth: { balance: 0, monthly: 0, returnPct: 0 },
+    hsa: { eligible: false, balance: 0, monthly: 0, returnPct: 0 },
+    hysa: { balance: 0, apyPct: 0, monthly: 0, efTarget: 0 },
+    debts: [],
+    extraDebtMonthly: 0,
+    goals: { retireSpendMonthly: 0, swrPct: 4, inflationPct: 0 },
+    limits: { k401: 24500, ira: 7500, hsa: 4400, highAprPct: 7 }
+  };
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  /* 1. Compound growth: $10k at 12% for 10y, no contributions -> 10000 * 1.12^10 */
+  var c1 = clone(blank);
+  c1.roth.balance = 10000; c1.roth.returnPct = 12;
+  var r1 = NestEgg.simulate(NestEgg.normalize(c1), 'current');
+  t('compound growth 10k @12% 10y = 31058.48',
+    near(r1.final.roth, 31058.48, 0.5), r1.final.roth.toFixed(2));
+
+  /* 2. Debt amortization: $5k @24% APR, $250/mo minimum -> 26 months, ~$1449.33 interest */
+  var c2 = clone(blank);
+  c2.debts = [{ name: 'card', balance: 5000, aprPct: 24, minPayment: 250 }];
+  var r2 = NestEgg.simulate(NestEgg.normalize(c2), 'current');
+  t('debt payoff month = 26', r2.debtFreeMonth === 26, r2.debtFreeMonth);
+  t('debt total interest ~ 1449.33', near(r2.totalInterest, 1449.33, 1), r2.totalInterest.toFixed(2));
+
+  /* 3. Employer match: $120k salary, 6% contrib, 50% match up to 6% -> $600 + $300 month 1 */
+  var c3 = clone(blank);
+  c3.profile.annualIncome = 120000;
+  c3.k401.contribPct = 6; c3.k401.matchRatePct = 50; c3.k401.matchCapPct = 6;
+  var r3 = NestEgg.simulate(NestEgg.normalize(c3), 'current');
+  t('month-1 401k contribution = 600', near(r3.firstAlloc.k401, 600, 0.01), r3.firstAlloc.k401);
+  t('month-1 employer match = 300', near(r3.firstAlloc.match, 300, 0.01), r3.firstAlloc.match);
+
+  /* 4. Annual 401k limit: 30% of $120k caps at $24,500; per-paycheck match dies when
+        contributions stop (8 months x 300 + 250 partial) -> balance 27150 at 0% return */
+  var c4 = clone(blank);
+  c4.profile.retirementAge = 31;
+  c4.profile.annualIncome = 120000;
+  c4.k401.contribPct = 30; c4.k401.matchRatePct = 50; c4.k401.matchCapPct = 6;
+  var r4 = NestEgg.simulate(NestEgg.normalize(c4), 'current');
+  t('401k limit caps year-1 balance at 27150', near(r4.final.k401, 27150, 1), r4.final.k401.toFixed(2));
+
+  /* 5. Recommended allocator order: match first, then high-APR debt */
+  var c5 = clone(blank);
+  c5.profile.annualIncome = 60000;
+  c5.k401.matchRatePct = 100; c5.k401.matchCapPct = 3;
+  c5.hysa.monthly = 500;
+  c5.debts = [{ name: 'card', balance: 4000, aprPct: 24, minPayment: 100 }];
+  var r5 = NestEgg.simulate(NestEgg.normalize(c5), 'recommended');
+  t('rec step 1: 401k to match = 150', near(r5.firstAlloc.steps.match, 150, 0.01), r5.firstAlloc.steps.match);
+  t('rec step 2: rest to high-APR debt = 350', near(r5.firstAlloc.steps.hiDebt, 350, 0.01), r5.firstAlloc.steps.hiDebt);
+  t('rec plan pays debt sooner than current',
+    r5.debtFreeMonth < NestEgg.simulate(NestEgg.normalize(c5), 'current').debtFreeMonth,
+    r5.debtFreeMonth);
+
+  /* 6. Waterfall continues after debt + EF: budget flows into HSA then Roth */
+  var c6 = clone(blank);
+  c6.profile.annualIncome = 60000;
+  c6.hsa.eligible = true;
+  c6.hysa.monthly = 1000; c6.hysa.efTarget = 0;
+  var r6 = NestEgg.simulate(NestEgg.normalize(c6), 'recommended');
+  t('rec: no match/debt/EF -> HSA takes whole 1000 budget (annual room 4400)',
+    near(r6.firstAlloc.steps.hsa, 1000, 0.01), r6.firstAlloc.steps.hsa);
+  t('rec: month-1 budget fully allocated across hsa/roth/overflow',
+    near(r6.firstAlloc.steps.hsa + r6.firstAlloc.steps.roth + r6.firstAlloc.steps.overflow, 1000, 0.01),
+    JSON.stringify(r6.firstAlloc.steps));
+
+  /* 7. Readiness target: $4k/mo spend today, 0% inflation, 4% SWR -> $1.2M */
+  var c7 = clone(blank);
+  c7.goals.retireSpendMonthly = 4000;
+  var a7 = NestEgg.analyze(c7);
+  t('nest-egg target = 1.2M', near(a7.target, 1200000, 0.01), a7.target);
+
+  /* 8. Budget parity: both strategies spend the same total in month 1 */
+  var c8 = clone(blank);
+  c8.profile.annualIncome = 90000;
+  c8.k401.contribPct = 5; c8.k401.matchRatePct = 100; c8.k401.matchCapPct = 4;
+  c8.roth.monthly = 200; c8.hysa.monthly = 300; c8.extraDebtMonthly = 100;
+  c8.debts = [{ name: 'loan', balance: 8000, aprPct: 11, minPayment: 150 }];
+  var cur8 = NestEgg.simulate(NestEgg.normalize(c8), 'current');
+  var rec8 = NestEgg.simulate(NestEgg.normalize(c8), 'recommended');
+  var spend = function (fa) { return fa.k401 + fa.roth + fa.hsa + fa.hysa + fa.debtExtra; };
+  t('month-1 budgets match across strategies',
+    near(spend(cur8.firstAlloc), spend(rec8.firstAlloc), 0.01),
+    spend(cur8.firstAlloc) + ' vs ' + spend(rec8.firstAlloc));
+
+  /* 9. Zero/blank inputs do not blow up */
+  var a9 = NestEgg.analyze({});
+  t('blank analyze returns without NaN', isFinite(a9.current.final.netWorth), a9.current.final.netWorth);
+
+  var failed = out.filter(function (l) { return l.indexOf('FAIL') === 0; }).length;
+  out.unshift((failed ? 'RESULT: FAIL (' + failed + ')' : 'RESULT: PASS') + ' — ' + out.length + ' checks');
+  document.getElementById('out').textContent = out.join('\n');
+})();
+</script>
+</body>
+</html>

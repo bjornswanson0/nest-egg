@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nest Egg — Retirement Calculator</title>
+  <meta name="description" content="A retirement calculator that takes the whole picture: 401(k), Roth IRA, HSA, HYSA, and high-interest debt. Everything stays in your browser.">
+  <meta name="theme-color" content="#f9f9f7">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=1">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('ne_theme');
+        if (t) document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 4c-4.6 0-8.5 6.2-8.5 12.2S11 26.5 16 26.5s8.5-4.3 8.5-10.3S20.6 4 16 4z" class="egg"/>
+      <path d="M5 24c2.5 3.6 6.5 5.5 11 5.5S24.5 27.6 27 24" class="nest" fill="none"/>
+    </svg>
+    <div>
+      <h1>Nest Egg</h1>
+      <p class="tagline">The whole retirement picture — accounts, debt, and where your next dollar should go.</p>
+    </div>
+  </div>
+  <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">
+    <span class="theme-icon" aria-hidden="true"></span>
+  </button>
+</header>
+
+<main>
+  <p class="privacy-note">Runs entirely in your browser. Your numbers are saved to this device only — nothing is uploaded, ever.</p>
+
+  <div class="layout">
+
+    <!-- ============ Inputs ============ -->
+    <aside class="inputs" aria-label="Your numbers">
+
+      <section class="card">
+        <h2>About you</h2>
+        <div class="field-grid">
+          <label class="field"><span>Current age</span>
+            <input type="number" data-bind="profile.currentAge" min="16" max="90" step="1" inputmode="numeric" placeholder="30"></label>
+          <label class="field"><span>Retire at</span>
+            <input type="number" data-bind="profile.retirementAge" min="30" max="90" step="1" inputmode="numeric" placeholder="65"></label>
+          <label class="field span2"><span>Annual income (gross)</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="profile.annualIncome" min="0" step="1000" inputmode="decimal" placeholder="85,000"></span></label>
+          <label class="field"><span>Annual raises</span>
+            <span class="control"><input type="number" data-bind="profile.incomeGrowthPct" min="0" max="20" step="0.5" inputmode="decimal" placeholder="3"><span class="affix">%</span></span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>401(k)</h2>
+        <div class="field-grid">
+          <label class="field span2"><span>Current balance</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="k401.balance" min="0" step="500" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>You contribute</span>
+            <span class="control"><input type="number" data-bind="k401.contribPct" min="0" max="100" step="0.5" inputmode="decimal" placeholder="6"><span class="affix">% of pay</span></span></label>
+          <label class="field"><span>Expected return</span>
+            <span class="control"><input type="number" data-bind="k401.returnPct" min="0" max="20" step="0.5" inputmode="decimal"><span class="affix">%/yr</span></span></label>
+          <label class="field"><span>Employer matches</span>
+            <span class="control"><input type="number" data-bind="k401.matchRatePct" min="0" max="200" step="5" inputmode="decimal" placeholder="50"><span class="affix">%</span></span></label>
+          <label class="field"><span>…of the first</span>
+            <span class="control"><input type="number" data-bind="k401.matchCapPct" min="0" max="100" step="0.5" inputmode="decimal" placeholder="6"><span class="affix">% of pay</span></span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Roth IRA</h2>
+        <div class="field-grid">
+          <label class="field"><span>Current balance</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="roth.balance" min="0" step="500" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>Monthly contribution</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="roth.monthly" min="0" step="25" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>Expected return</span>
+            <span class="control"><input type="number" data-bind="roth.returnPct" min="0" max="20" step="0.5" inputmode="decimal"><span class="affix">%/yr</span></span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>HSA</h2>
+        <label class="check"><input type="checkbox" data-bind="hsa.eligible"> I have an HSA-eligible health plan</label>
+        <div class="field-grid hsa-fields">
+          <label class="field"><span>Current balance</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="hsa.balance" min="0" step="100" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>Monthly contribution</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="hsa.monthly" min="0" step="25" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>Expected return</span>
+            <span class="control"><input type="number" data-bind="hsa.returnPct" min="0" max="20" step="0.5" inputmode="decimal"><span class="affix">%/yr</span></span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>High-yield savings</h2>
+        <div class="field-grid">
+          <label class="field"><span>Current balance</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="hysa.balance" min="0" step="500" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>Monthly contribution</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="hysa.monthly" min="0" step="25" inputmode="decimal" placeholder="0"></span></label>
+          <label class="field"><span>APY</span>
+            <span class="control"><input type="number" data-bind="hysa.apyPct" min="0" max="10" step="0.1" inputmode="decimal"><span class="affix">%</span></span></label>
+          <label class="field"><span>Emergency fund goal</span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="hysa.efTarget" min="0" step="1000" inputmode="decimal" placeholder="15,000"></span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Debts</h2>
+        <p class="hint">Credit cards, personal loans, car loans — anything with a balance and an APR.</p>
+        <div id="debt-list"></div>
+        <button type="button" id="add-debt" class="ghost-btn">+ Add a debt</button>
+        <div class="field-grid">
+          <label class="field span2"><span>Extra toward debt each month <small>(beyond minimums)</small></span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="extraDebtMonthly" min="0" step="25" inputmode="decimal" placeholder="0"></span></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Goal &amp; assumptions</h2>
+        <div class="field-grid">
+          <label class="field span2"><span>Monthly spending in retirement <small>(today's dollars)</small></span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="goals.retireSpendMonthly" min="0" step="250" inputmode="decimal" placeholder="5,000"></span></label>
+          <label class="field"><span>Inflation</span>
+            <span class="control"><input type="number" data-bind="goals.inflationPct" min="0" max="10" step="0.1" inputmode="decimal"><span class="affix">%/yr</span></span></label>
+          <label class="field"><span>Withdrawal rate</span>
+            <span class="control"><input type="number" data-bind="goals.swrPct" min="1" max="10" step="0.25" inputmode="decimal"><span class="affix">%/yr</span></span></label>
+        </div>
+        <details class="advanced">
+          <summary>Advanced: contribution limits &amp; thresholds</summary>
+          <div class="field-grid">
+            <label class="field"><span>401(k) limit</span>
+              <span class="control"><span class="affix">$</span>
+                <input type="number" data-bind="limits.k401" min="0" step="500" inputmode="decimal"></span></label>
+            <label class="field"><span>IRA limit</span>
+              <span class="control"><span class="affix">$</span>
+                <input type="number" data-bind="limits.ira" min="0" step="500" inputmode="decimal"></span></label>
+            <label class="field"><span>HSA limit</span>
+              <span class="control"><span class="affix">$</span>
+                <input type="number" data-bind="limits.hsa" min="0" step="50" inputmode="decimal"></span></label>
+            <label class="field"><span>"High interest" means ≥</span>
+              <span class="control"><input type="number" data-bind="limits.highAprPct" min="0" max="30" step="0.5" inputmode="decimal"><span class="affix">% APR</span></span></label>
+          </div>
+        </details>
+      </section>
+
+      <button type="button" id="reset" class="ghost-btn danger">Clear all my numbers</button>
+    </aside>
+
+    <!-- ============ Results ============ -->
+    <section class="results" aria-label="Projection">
+
+      <div id="empty-state" class="empty-state">
+        <p><strong>Start with the basics.</strong> Enter your current age and the age you'd like to retire, and the projection will appear here. Add accounts, debts, and a spending goal as you go — every number updates live.</p>
+        <button type="button" id="load-sample" class="ghost-btn sample-btn">Or explore with example numbers →</button>
+      </div>
+
+      <div id="results-body" hidden>
+
+        <div class="kpi-row">
+          <div class="tile">
+            <span class="tile-label">Nest egg at retirement</span>
+            <span class="tile-value" id="kpi-nestegg">—</span>
+            <span class="tile-sub" id="kpi-nestegg-today">—</span>
+          </div>
+          <div class="tile">
+            <span class="tile-label">Retirement goal coverage</span>
+            <span class="tile-value" id="kpi-coverage">—</span>
+            <div class="meter" id="kpi-meter"><div class="meter-fill"></div></div>
+            <span class="tile-sub" id="kpi-coverage-sub">—</span>
+          </div>
+          <div class="tile">
+            <span class="tile-label">Debt-free</span>
+            <span class="tile-value" id="kpi-debtfree">—</span>
+            <span class="tile-sub" id="kpi-interest">—</span>
+          </div>
+          <div class="tile">
+            <span class="tile-label">Recommended-order boost</span>
+            <span class="tile-value" id="kpi-boost">—</span>
+            <span class="tile-sub" id="kpi-boost-sub">—</span>
+          </div>
+        </div>
+
+        <section class="card chart-card">
+          <div class="card-head">
+            <div>
+              <h2>Net worth to retirement</h2>
+            </div>
+            <div class="legend" id="legend-projection"></div>
+          </div>
+          <div id="chart-projection"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Where your next dollar goes</h2></div>
+          <p class="hint" id="waterfall-note">Same monthly budget, two orders. The recommended order follows: employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → savings overflow.</p>
+          <div class="waterfall-grid">
+            <table class="mini-table" aria-label="Your plan today, first month">
+              <caption>Your plan today <span class="cap-sub">/mo, month one</span></caption>
+              <tbody id="alloc-current"></tbody>
+            </table>
+            <table class="mini-table" aria-label="Recommended order, first month">
+              <caption>Recommended order <span class="cap-sub">/mo, month one</span></caption>
+              <tbody id="alloc-rec"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="two-up">
+          <section class="card chart-card">
+            <div class="card-head">
+              <div><h2>Account mix over time</h2></div>
+              <div class="legend" id="legend-mix"></div>
+            </div>
+            <div id="chart-mix"></div>
+          </section>
+          <section class="card chart-card" id="debt-card">
+            <div class="card-head"><h2>Debt balance</h2></div>
+            <div id="chart-debt"></div>
+          </section>
+        </div>
+
+        <details class="card table-view">
+          <summary><h2>Projection table</h2><span class="hint">every value, year by year</span></summary>
+          <div class="table-scroll">
+            <table id="projection-table">
+              <thead>
+                <tr><th scope="col">Age</th><th scope="col">401(k)</th><th scope="col">Roth IRA</th><th scope="col">HSA</th><th scope="col">HYSA</th><th scope="col">Debt</th><th scope="col">Net worth</th><th scope="col">Recommended net worth</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
+
+        <details class="card methodology">
+          <summary><h2>How the math works</h2></summary>
+          <ul>
+            <li>Everything compounds monthly; contributions land before growth each month.</li>
+            <li>Employer match is applied per paycheck up to your match cap — no year-end true-up.</li>
+            <li>Annual contribution limits (401(k), IRA, HSA) cap contributions within each year; the blocked dollars keep working elsewhere.</li>
+            <li>Extra debt payments go to the highest-APR balance first (avalanche). When a debt is paid off, its old minimum payment rolls into your plan instead of disappearing.</li>
+            <li>The <em>recommended order</em> re-allocates the same monthly budget: employer match → debt at or above your high-interest threshold → emergency fund → HSA → Roth IRA → 401(k) to the annual max → remaining debt → savings overflow. Your plan and the recommended plan always spend identical dollars, so the gap between the two lines is pure ordering.</li>
+            <li>Your nest-egg goal is monthly spending × 12, inflated to retirement age, divided by your withdrawal rate (the "4% rule" by default).</li>
+            <li>Taxes aren't modeled — pre-tax and Roth dollars are both taken at face value, so treat results as directional, not gospel.</li>
+          </ul>
+          <p class="disclaimer">This is an educational tool, not financial advice. Numbers are projections built on your assumptions — real markets won't cooperate so smoothly.</p>
+        </details>
+
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <p>Built by <a href="https://bjornswanson0.github.io/" rel="author">Bjorn Swanson</a> · <a href="https://github.com/bjornswanson0/nest-egg">Source on GitHub</a> · Not financial advice.</p>
+</footer>
+
+<template id="debt-row-tpl">
+  <div class="debt-row">
+    <input type="text" class="debt-name" placeholder="Name (e.g. Visa)" maxlength="24" aria-label="Debt name">
+    <span class="control"><span class="affix">$</span>
+      <input type="number" class="debt-balance" min="0" step="100" inputmode="decimal" placeholder="Balance" aria-label="Debt balance"></span>
+    <span class="control"><input type="number" class="debt-apr" min="0" max="99" step="0.1" inputmode="decimal" placeholder="APR" aria-label="Debt APR"><span class="affix">%</span></span>
+    <span class="control"><span class="affix">$</span>
+      <input type="number" class="debt-min" min="0" step="10" inputmode="decimal" placeholder="Min/mo" aria-label="Minimum monthly payment"></span>
+    <button type="button" class="debt-remove" aria-label="Remove this debt">×</button>
+  </div>
+</template>
+
+<script src="js/engine.js?v=1"></script>
+<script src="js/charts.js?v=1"></script>
+<script src="js/app.js?v=1"></script>
+</body>
+</html>
