@@ -1067,5 +1067,59 @@
     renderTable(a);
   }
 
-  recalc();
+  /* ---------- guided wizard (TurboTax-style walkthrough) ---------- */
+  var wizardEl = el('wizard');
+  var resultsEl = el('results-view');
+  var stepEls = Array.prototype.slice.call(document.querySelectorAll('#wiz-steps .step'));
+  var backBtn = el('wiz-back'), nextBtn = el('wiz-next');
+  var curStep = 0;
+
+  function renderStep() {
+    var total = stepEls.length;
+    stepEls.forEach(function (s, i) { s.hidden = i !== curStep; });
+    el('wiz-count').textContent = 'Step ' + (curStep + 1) + ' of ' + total;
+    el('wiz-section').textContent = stepEls[curStep].getAttribute('data-section') || '';
+    el('wiz-fill').style.width = ((curStep + 1) / total * 100) + '%';
+    backBtn.disabled = curStep === 0;
+    nextBtn.textContent = curStep === total - 1 ? 'See my plan →' : 'Next →';
+    var f = stepEls[curStep].querySelector('input, select');
+    if (f && f.focus) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } }
+    window.scrollTo(0, 0);
+  }
+  function goStep(i) {
+    curStep = Math.max(0, Math.min(stepEls.length - 1, i));
+    renderStep();
+  }
+
+  backBtn.addEventListener('click', function () { if (curStep > 0) goStep(curStep - 1); });
+  nextBtn.addEventListener('click', function () {
+    if (curStep === stepEls.length - 1) showResults();
+    else goStep(curStep + 1);
+  });
+
+  function showWizard(step) {
+    resultsEl.hidden = true;
+    wizardEl.hidden = false;
+    goStep(step == null ? curStep : step);
+  }
+  function showResults() {
+    recalc();
+    wizardEl.hidden = true;
+    resultsEl.hidden = false;
+    window.scrollTo(0, 0);
+  }
+  el('edit-answers').addEventListener('click', function () { showWizard(0); });
+  var emptyEdit = el('empty-edit');
+  if (emptyEdit) emptyEdit.addEventListener('click', function () { showWizard(0); });
+
+  /* Land returning users (and the #demo sample) on their results; walk first-timers
+     through the questions. Both can jump between views any time. */
+  (function initialView() {
+    var pf = state.profile;
+    var complete = pf.currentAge !== '' && pf.currentAge != null &&
+      pf.retirementAge !== '' && pf.retirementAge != null &&
+      +pf.retirementAge > +pf.currentAge;
+    if (complete) showResults();
+    else showWizard(0);
+  })();
 })();

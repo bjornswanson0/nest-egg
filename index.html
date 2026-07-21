@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nest Egg — Retirement Calculator</title>
-  <meta name="description" content="A retirement calculator that takes the whole picture: 401(k), Roth IRA, HSA, HYSA, and high-interest debt. Everything stays in your browser.">
+  <meta name="description" content="A retirement calculator that walks you through the whole picture: 401(k), Roth IRA, HSA, HYSA, brokerage, and debt. Everything stays in your browser.">
   <meta name="theme-color" content="#ece5d8">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=2">
   <script>
@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
 
@@ -37,15 +37,21 @@
 </header>
 
 <main>
-  <p class="privacy-note">Runs entirely in your browser. Your numbers are saved to this device only — nothing is uploaded, ever.</p>
 
-  <div class="layout">
+  <!-- ================= GUIDED WIZARD ================= -->
+  <div id="wizard" aria-label="Set up your plan">
+    <div class="wiz-top">
+      <div class="wiz-bar"><span class="wiz-bar-fill" id="wiz-fill"></span></div>
+      <p class="wiz-count"><span id="wiz-count">Step 1 of 8</span> · <span id="wiz-section">Getting started</span></p>
+    </div>
 
-    <!-- ============ Inputs ============ -->
-    <aside class="inputs" aria-label="Your numbers">
+    <div id="wiz-steps">
 
-      <section class="card">
-        <h2>About you</h2>
+      <!-- Step 1 — About you -->
+      <section class="step" data-section="Getting started">
+        <p class="step-eyebrow">Getting started</p>
+        <h2 class="step-q">First, the basics about you</h2>
+        <p class="step-sub">Your age and income anchor everything else. Don't worry about being exact — you can change any answer later.</p>
         <div class="field-grid">
           <label class="field"><span>Current age</span>
             <input type="number" data-bind="profile.currentAge" min="16" max="90" step="1" inputmode="numeric" placeholder="30"></label>
@@ -60,10 +66,14 @@
             <span class="control"><span class="affix">$</span>
               <input type="number" data-bind="profile.takeHomeMonthly" min="0" step="100" inputmode="decimal" placeholder="estimated from gross if blank"></span></label>
         </div>
+        <p class="step-tip"><button type="button" id="load-sample" class="linklike">Just exploring? Fill everything with example numbers →</button></p>
       </section>
 
-      <section class="card">
-        <h2>401(k) <button type="button" class="help-btn" data-help="k401" aria-label="What is a 401(k)?">?</button></h2>
+      <!-- Step 2 — 401(k) -->
+      <section class="step" data-section="Retirement accounts">
+        <p class="step-eyebrow">Retirement accounts</p>
+        <h2 class="step-q">Do you have a 401(k) at work? <button type="button" class="help-btn" data-help="k401" aria-label="What is a 401(k)?">?</button></h2>
+        <p class="step-sub">The retirement account your employer offers — often with free matching money. Leave it blank if you don't have one.</p>
         <div class="vendor-row">
           <span class="vendor-badge" id="vb-k401" hidden aria-hidden="true"></span>
           <select class="vendor-select" data-vendor="k401" aria-label="Who holds your 401(k)?"></select>
@@ -91,8 +101,11 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>Roth IRA <button type="button" class="help-btn" data-help="roth" aria-label="What is a Roth IRA?">?</button></h2>
+      <!-- Step 3 — Roth IRA -->
+      <section class="step" data-section="Retirement accounts">
+        <p class="step-eyebrow">Retirement accounts</p>
+        <h2 class="step-q">What about a Roth IRA? <button type="button" class="help-btn" data-help="roth" aria-label="What is a Roth IRA?">?</button></h2>
+        <p class="step-sub">A retirement account you open yourself — it grows and comes out tax-free. Leave it blank if you haven't opened one.</p>
         <div class="vendor-row">
           <span class="vendor-badge" id="vb-roth" hidden aria-hidden="true"></span>
           <select class="vendor-select" data-vendor="roth" aria-label="Who holds your Roth IRA?"></select>
@@ -109,13 +122,16 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>HSA <button type="button" class="help-btn" data-help="hsa" aria-label="What is an HSA?">?</button></h2>
+      <!-- Step 4 — HSA -->
+      <section class="step" data-section="Health & savings">
+        <p class="step-eyebrow">Health &amp; savings</p>
+        <h2 class="step-q">Are you on an HSA-eligible health plan? <button type="button" class="help-btn" data-help="hsa" aria-label="What is an HSA?">?</button></h2>
+        <p class="step-sub">If your health plan is a high-deductible one, the HSA is the most tax-friendly account there is.</p>
         <div class="vendor-row">
           <span class="vendor-badge" id="vb-hsa" hidden aria-hidden="true"></span>
           <select class="vendor-select" data-vendor="hsa" aria-label="Who holds your HSA?"></select>
         </div>
-        <label class="check"><input type="checkbox" data-bind="hsa.eligible"> I have an HSA-eligible health plan</label>
+        <label class="check"><input type="checkbox" data-bind="hsa.eligible"> Yes, I have an HSA-eligible health plan</label>
         <div class="field-grid hsa-fields">
           <label class="field"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -130,8 +146,11 @@
         <button type="button" id="hsa-max-btn" class="ghost-btn mini">Set my monthly to the max</button>
       </section>
 
-      <section class="card">
-        <h2>High-yield savings <button type="button" class="help-btn" data-help="hysa" aria-label="What is a high-yield savings account?">?</button></h2>
+      <!-- Step 5 — High-yield savings -->
+      <section class="step" data-section="Health & savings">
+        <p class="step-eyebrow">Health &amp; savings</p>
+        <h2 class="step-q">Where's your cash? <button type="button" class="help-btn" data-help="hysa" aria-label="What is a high-yield savings account?">?</button></h2>
+        <p class="step-sub">Your high-yield savings — including the emergency fund you'd tap in a pinch.</p>
         <div class="vendor-row">
           <span class="vendor-badge" id="vb-hysa" hidden aria-hidden="true"></span>
           <select class="vendor-select" data-vendor="hysa" aria-label="Who holds your savings account?"></select>
@@ -151,8 +170,11 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>Brokerage <button type="button" class="help-btn" data-help="brokerage" aria-label="What is a brokerage account?">?</button></h2>
+      <!-- Step 6 — Brokerage -->
+      <section class="step" data-section="Investing">
+        <p class="step-eyebrow">Investing</p>
+        <h2 class="step-q">Any investing outside retirement accounts? <button type="button" class="help-btn" data-help="brokerage" aria-label="What is a brokerage account?">?</button></h2>
+        <p class="step-sub">A regular (taxable) brokerage account. Leave it blank if you don't have one yet.</p>
         <div class="vendor-row">
           <span class="vendor-badge" id="vb-brokerage" hidden aria-hidden="true"></span>
           <select class="vendor-select" data-vendor="brokerage" aria-label="Who holds your brokerage account?"></select>
@@ -169,9 +191,11 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>Debts <button type="button" class="help-btn" data-help="debts" aria-label="How are debts handled?">?</button></h2>
-        <p class="hint">Credit cards, personal loans, car loans — anything with a balance and an APR.</p>
+      <!-- Step 7 — Debts -->
+      <section class="step" data-section="What you owe">
+        <p class="step-eyebrow">What you owe</p>
+        <h2 class="step-q">Let's list any debts <button type="button" class="help-btn" data-help="debts" aria-label="How are debts handled?">?</button></h2>
+        <p class="step-sub">Credit cards, student loans, car loans — anything with a balance and an APR. We'll build a payoff plan. No debts? Just move on.</p>
         <div id="debt-list"></div>
         <button type="button" id="add-debt" class="ghost-btn">+ Add a debt</button>
         <div class="field-grid">
@@ -181,8 +205,11 @@
         </div>
       </section>
 
-      <section class="card">
-        <h2>Goal &amp; assumptions</h2>
+      <!-- Step 8 — Goals -->
+      <section class="step" data-section="The finish line">
+        <p class="step-eyebrow">The finish line</p>
+        <h2 class="step-q">Finally — what does retirement look like?</h2>
+        <p class="step-sub">How much you'll spend, and a few assumptions you can fine-tune. Then we'll show your plan.</p>
         <div class="field-grid">
           <label class="field span2"><span>Monthly spending in retirement <small>(today's dollars)</small></span>
             <span class="control"><span class="affix">$</span>
@@ -217,20 +244,31 @@
         </details>
       </section>
 
-      <div class="data-btns">
-        <button type="button" id="export-data" class="ghost-btn">Download my numbers</button>
-        <button type="button" id="import-data" class="ghost-btn">Load from file</button>
-        <input type="file" id="import-file" accept="application/json,.json" hidden>
-      </div>
-      <button type="button" id="reset" class="ghost-btn danger">Clear all my numbers</button>
-    </aside>
+    </div>
 
-    <!-- ============ Results ============ -->
+    <div class="wiz-nav">
+      <button type="button" id="wiz-back" class="ghost-btn" disabled>← Back</button>
+      <button type="button" id="wiz-next" class="sample-btn">Next →</button>
+    </div>
+    <p class="privacy-note wiz-privacy">Runs entirely in your browser. Your numbers are saved to this device only — nothing is uploaded, ever.</p>
+  </div>
+
+  <!-- ================= RESULTS ================= -->
+  <div id="results-view" hidden>
+    <div class="results-topbar">
+      <button type="button" id="edit-answers" class="ghost-btn">← Edit my answers</button>
+      <div class="topbar-right">
+        <button type="button" id="export-data" class="ghost-btn">Download</button>
+        <button type="button" id="import-data" class="ghost-btn">Load file</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <button type="button" id="reset" class="ghost-btn danger">Clear all</button>
+      </div>
+    </div>
+
     <section class="results" aria-label="Projection">
 
-      <div id="empty-state" class="empty-state">
-        <p><strong>Start with the basics.</strong> Enter your current age and the age you'd like to retire, and the projection will appear here. Add accounts, debts, and a spending goal as you go — every number updates live.</p>
-        <button type="button" id="load-sample" class="ghost-btn sample-btn">Or explore with example numbers →</button>
+      <div id="empty-state" class="empty-state" hidden>
+        <p>Add your current age and a retirement age to see your plan. <button type="button" id="empty-edit" class="linklike">Back to the questions →</button></p>
       </div>
 
       <div id="results-body" hidden>
@@ -405,6 +443,6 @@
 
 <script src="js/engine.js?v=4"></script>
 <script src="js/charts.js?v=2"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/app.js?v=10"></script>
 </body>
 </html>
