@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nest Egg — Retirement Calculator</title>
   <meta name="description" content="A retirement calculator that takes the whole picture: 401(k), Roth IRA, HSA, HYSA, and high-interest debt. Everything stays in your browser.">
-  <meta name="theme-color" content="#f9f9f7">
-  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=1">
+  <meta name="theme-color" content="#ece5d8">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=2">
   <script>
     (function () {
       try {
@@ -18,24 +18,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
 
 <header class="site-header">
   <div class="brand">
-    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M16 4c-4.6 0-8.5 6.2-8.5 12.2S11 26.5 16 26.5s8.5-4.3 8.5-10.3S20.6 4 16 4z" class="egg"/>
-      <path d="M5 24c2.5 3.6 6.5 5.5 11 5.5S24.5 27.6 27 24" class="nest" fill="none"/>
-    </svg>
-    <div>
-      <h1>Nest Egg</h1>
-      <p class="tagline">The whole retirement picture — accounts, debt, and where your next dollar should go.</p>
-    </div>
+    <h1>Nest Egg</h1>
+    <span class="brand-rule" aria-hidden="true"></span>
+    <p class="tagline">The whole retirement picture — accounts, debt, and where your next dollar should go.</p>
   </div>
-  <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">
-    <span class="theme-icon" aria-hidden="true"></span>
-  </button>
+  <div class="brand-panel">
+    <span class="brand-egg" aria-hidden="true"></span>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">
+      <span class="theme-icon" aria-hidden="true"></span>
+    </button>
+  </div>
 </header>
 
 <main>
@@ -300,6 +298,7 @@
 </main>
 
 <footer class="site-footer">
+  <span class="barcode" aria-hidden="true"></span>
   <p>Built by <a href="https://bjornswanson0.github.io/" rel="author">Bjorn Swanson</a> · <a href="https://github.com/bjornswanson0/nest-egg">Source on GitHub</a> · Not financial advice.</p>
 </footer>
 
@@ -317,6 +316,6 @@
 
 <script src="js/engine.js?v=2"></script>
 <script src="js/charts.js?v=1"></script>
-<script src="js/app.js?v=3"></script>
+<script src="js/app.js?v=4"></script>
 </body>
 </html>

@@ -161,7 +161,7 @@
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
   function applyThemeMeta() {
-    themeMeta.setAttribute('content', effectiveTheme() === 'dark' ? '#0d0d0d' : '#f9f9f7');
+    themeMeta.setAttribute('content', effectiveTheme() === 'dark' ? '#0e131d' : '#ece5d8');
   }
   themeBtn.addEventListener('click', function () {
     var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
