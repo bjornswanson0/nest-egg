@@ -543,14 +543,16 @@
   }
 
   /* ---------- charts ---------- */
-  function makeLegend(host, items, kind) {
+  /* Legend chips mirror the mark: line, rect (fills), band (wash), dash (threshold). */
+  function makeLegend(host, items) {
     host.textContent = '';
     items.forEach(function (it) {
       var chip = document.createElement('span');
       chip.className = 'legend-chip';
       var key = document.createElement('span');
-      key.className = kind === 'line' ? 'legend-line' : 'legend-swatch';
-      key.style.background = 'var(' + it.color + ')';
+      key.className = 'legend-' + (it.kind || 'line');
+      if (it.kind === 'dash') key.style.borderTopColor = 'var(' + it.color + ')';
+      else key.style.background = 'var(' + it.color + ')';
       var name = document.createElement('span');
       name.textContent = it.name;
       chip.appendChild(key); chip.appendChild(name);
@@ -581,7 +583,7 @@
     }
   });
   makeLegend(document.getElementById('legend-projection'),
-    [{ name: 'Your plan', color: '--s1' }, { name: 'Recommended', color: '--s2' }], 'line');
+    [{ name: 'Your plan', color: '--s1' }, { name: 'Recommended', color: '--s2' }]);
 
   var MIX_SERIES = [
     { key: 'k401', name: '401(k)', color: '--s1' },
@@ -595,7 +597,9 @@
     ariaLabel: 'Account balances stacked over time. Full values are in the projection table below.',
     series: MIX_SERIES
   });
-  makeLegend(document.getElementById('legend-mix'), MIX_SERIES, 'rect');
+  makeLegend(document.getElementById('legend-mix'), MIX_SERIES.map(function (s) {
+    return { name: s.name, color: s.color, kind: 'rect' };
+  }));
 
   var chartDebt = NestEggCharts.makeChart(document.getElementById('chart-debt'), {
     mode: 'lines', height: 220, endLabels: false, xMeta: chartXMeta,
@@ -605,9 +609,38 @@
       { key: 'rec', name: 'Recommended', color: '--s2' }
     ]
   });
+  makeLegend(document.getElementById('legend-debt'),
+    [{ name: 'Your plan', color: '--s1' }, { name: 'Recommended', color: '--s2' }]);
 
   /* ---------- rendering ---------- */
   var el = function (id) { return document.getElementById(id); };
+
+  /* ---------- collapsible result sections (state remembered per device) ---------- */
+  (function () {
+    var collapsed = {};
+    try { collapsed = JSON.parse(store.get('ne_ui') || '{}').collapsed || {}; } catch (e) { }
+    document.querySelectorAll('.results .card[id]').forEach(function (card) {
+      var head = card.querySelector('.card-head');
+      if (!head) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'collapse-btn';
+      btn.setAttribute('aria-label', 'Collapse or expand this section');
+      head.appendChild(btn);
+      function apply() {
+        var is = !!collapsed[card.id];
+        card.classList.toggle('collapsed', is);
+        btn.setAttribute('aria-expanded', String(!is));
+        btn.textContent = is ? '▸' : '▾';
+      }
+      btn.addEventListener('click', function () {
+        collapsed[card.id] = !collapsed[card.id];
+        store.set('ne_ui', JSON.stringify({ collapsed: collapsed }));
+        apply();
+      });
+      apply();
+    });
+  })();
 
   function monthsToDate(m) {
     var d = new Date();
@@ -862,6 +895,14 @@
     });
     var goal = a.target > 0 ? { value: a.target, label: 'Goal ' + fmtMoney(a.target) } : null;
     chartProjection.update(proj, goal);
+
+    var projLegend = [
+      { name: 'Your plan', color: '--s1' },
+      { name: 'Recommended', color: '--s2' },
+      { name: '±2% range', color: '--s1', kind: 'band' }
+    ];
+    if (goal) projLegend.push({ name: 'Goal', color: '--muted', kind: 'dash' });
+    makeLegend(el('legend-projection'), projLegend);
 
     chartMix.update(cs.map(function (pt) {
       return { age: pt.age, k401: pt.k401, roth: pt.roth, hsa: pt.hsa, hysa: pt.hysa, brok: pt.brok };

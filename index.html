@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
 
@@ -261,18 +261,18 @@
           </div>
         </section>
 
-        <section class="card chart-card">
+        <section class="card chart-card" id="projection-card">
           <div class="card-head">
             <div>
               <h2>Net worth to retirement</h2>
             </div>
             <div class="legend" id="legend-projection"></div>
           </div>
-          <p class="hint">Shaded band: your plan if investment returns run 2 points hotter or colder than assumed.</p>
+          <p class="hint">Everything you own minus everything you owe, month by month, in gross (pre-tax) dollars — the tiles above show the after-tax view. The shaded band is your plan with investment returns 2 points hotter or colder than assumed; the dashed line is your nest-egg goal.</p>
           <div id="chart-projection"></div>
         </section>
 
-        <section class="card">
+        <section class="card" id="waterfall-card">
           <div class="card-head"><h2>Where your next dollar goes</h2></div>
           <p class="hint" id="waterfall-note">Same monthly budget, two orders. The recommended order follows: employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage.</p>
           <div class="waterfall-grid">
@@ -292,15 +292,20 @@
         </section>
 
         <div class="two-up">
-          <section class="card chart-card">
+          <section class="card chart-card" id="mix-card">
             <div class="card-head">
               <div><h2>Account mix over time</h2></div>
               <div class="legend" id="legend-mix"></div>
             </div>
+            <p class="hint">Where <em>your plan's</em> money lives at each age — the five accounts stacked to the total (gross values).</p>
             <div id="chart-mix"></div>
           </section>
           <section class="card chart-card" id="debt-card">
-            <div class="card-head"><h2>Debt balance</h2></div>
+            <div class="card-head">
+              <div><h2>Debt balance</h2></div>
+              <div class="legend" id="legend-debt"></div>
+            </div>
+            <p class="hint">Total owed under each order, until paid off. The recommended order attacks high-interest balances first, so it usually drops faster.</p>
             <div id="chart-debt"></div>
           </section>
         </div>
@@ -367,6 +372,6 @@
 
 <script src="js/engine.js?v=4"></script>
 <script src="js/charts.js?v=2"></script>
-<script src="js/app.js?v=7"></script>
+<script src="js/app.js?v=8"></script>
 </body>
 </html>
