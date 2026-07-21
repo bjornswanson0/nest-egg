@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 
@@ -64,6 +64,10 @@
 
       <section class="card">
         <h2>401(k) <button type="button" class="help-btn" data-help="k401" aria-label="What is a 401(k)?">?</button></h2>
+        <div class="vendor-row">
+          <span class="vendor-badge" id="vb-k401" hidden aria-hidden="true"></span>
+          <select class="vendor-select" data-vendor="k401" aria-label="Who holds your 401(k)?"></select>
+        </div>
         <div class="field-grid">
           <label class="field span2"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -89,6 +93,10 @@
 
       <section class="card">
         <h2>Roth IRA <button type="button" class="help-btn" data-help="roth" aria-label="What is a Roth IRA?">?</button></h2>
+        <div class="vendor-row">
+          <span class="vendor-badge" id="vb-roth" hidden aria-hidden="true"></span>
+          <select class="vendor-select" data-vendor="roth" aria-label="Who holds your Roth IRA?"></select>
+        </div>
         <div class="field-grid">
           <label class="field"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -103,6 +111,10 @@
 
       <section class="card">
         <h2>HSA <button type="button" class="help-btn" data-help="hsa" aria-label="What is an HSA?">?</button></h2>
+        <div class="vendor-row">
+          <span class="vendor-badge" id="vb-hsa" hidden aria-hidden="true"></span>
+          <select class="vendor-select" data-vendor="hsa" aria-label="Who holds your HSA?"></select>
+        </div>
         <label class="check"><input type="checkbox" data-bind="hsa.eligible"> I have an HSA-eligible health plan</label>
         <div class="field-grid hsa-fields">
           <label class="field"><span>Current balance</span>
@@ -120,6 +132,10 @@
 
       <section class="card">
         <h2>High-yield savings <button type="button" class="help-btn" data-help="hysa" aria-label="What is a high-yield savings account?">?</button></h2>
+        <div class="vendor-row">
+          <span class="vendor-badge" id="vb-hysa" hidden aria-hidden="true"></span>
+          <select class="vendor-select" data-vendor="hysa" aria-label="Who holds your savings account?"></select>
+        </div>
         <div class="field-grid">
           <label class="field"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -137,6 +153,10 @@
 
       <section class="card">
         <h2>Brokerage <button type="button" class="help-btn" data-help="brokerage" aria-label="What is a brokerage account?">?</button></h2>
+        <div class="vendor-row">
+          <span class="vendor-badge" id="vb-brokerage" hidden aria-hidden="true"></span>
+          <select class="vendor-select" data-vendor="brokerage" aria-label="Who holds your brokerage account?"></select>
+        </div>
         <div class="field-grid">
           <label class="field"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -238,6 +258,19 @@
             <span class="tile-sub" id="kpi-boost-sub">—</span>
           </div>
         </div>
+
+        <section class="card" id="plan-card">
+          <div class="card-head">
+            <div><h2>What to do with this month's money</h2></div>
+            <span class="hint" style="margin-bottom:0">the recommended order, as marching orders</span>
+          </div>
+          <ol class="orders" id="orders"></ol>
+          <p class="hint" id="orders-match-note"></p>
+          <div class="adopt-row">
+            <button type="button" id="adopt-plan" class="sample-btn adopt-btn">Make this my plan</button>
+            <span class="hint" id="adopt-note">Writes these amounts into your inputs — your plan becomes the recommended one.</span>
+          </div>
+        </section>
 
         <section class="card" id="insights-card">
           <div class="card-head">
@@ -372,6 +405,6 @@
 
 <script src="js/engine.js?v=4"></script>
 <script src="js/charts.js?v=2"></script>
-<script src="js/app.js?v=8"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>

@@ -22,6 +22,7 @@
     debts: [],
     extraDebtMonthly: '',
     growContrib: true,
+    vendors: { k401: '', roth: '', hsa: '', hysa: '', brokerage: '' },
     goals: { retireSpendMonthly: '', inflationPct: 2.5, swrPct: 4, taxRatePct: 15, ssMonthly: '', ssStartAge: 67 },
     limits: { k401: 24500, ira: 7500, hsa: 4400, highAprPct: 7 }
   };
@@ -43,6 +44,7 @@
     ],
     extraDebtMonthly: 200,
     growContrib: true,
+    vendors: { k401: 'fidelity', roth: 'vanguard', hsa: 'healthequity', hysa: 'ally', brokerage: 'schwab' },
     goals: { retireSpendMonthly: 5000, inflationPct: 2.5, swrPct: 4, taxRatePct: 15, ssMonthly: 2200, ssStartAge: 67 },
     limits: { k401: 24500, ira: 7500, hsa: 4400, highAprPct: 7 }
   };
@@ -146,6 +148,59 @@
   });
 
   renderDebts();
+
+  /* ---------- account providers (monogram badges in brand colors — no logo assets) ---------- */
+  var VENDORS = {
+    fidelity: { name: 'Fidelity', tag: 'F', bg: '#4E8F1C' },
+    vanguard: { name: 'Vanguard', tag: 'V', bg: '#96151D' },
+    schwab: { name: 'Charles Schwab', tag: 'CS', bg: '#0087C6' },
+    merrill: { name: 'Merrill', tag: 'ML', bg: '#00377D' },
+    empower: { name: 'Empower', tag: 'EM', bg: '#DF4E27' },
+    bofa: { name: 'Bank of America', tag: 'BA', bg: '#E31837' },
+    chase: { name: 'Chase', tag: 'CH', bg: '#117ACA' },
+    amex: { name: 'American Express', tag: 'AX', bg: '#006FCF' },
+    ally: { name: 'Ally', tag: 'AL', bg: '#6E2C91' },
+    marcus: { name: 'Marcus', tag: 'MA', bg: '#1B2D5B' },
+    discover: { name: 'Discover', tag: 'DI', bg: '#E55C20' },
+    capitalone: { name: 'Capital One', tag: 'C1', bg: '#C43B2F' },
+    sofi: { name: 'SoFi', tag: 'SF', bg: '#00A5C8' },
+    etrade: { name: 'E*TRADE', tag: 'ET', bg: '#6633CC' },
+    robinhood: { name: 'Robinhood', tag: 'RH', bg: '#1F9D55' },
+    healthequity: { name: 'HealthEquity', tag: 'HE', bg: '#7A3DAF' },
+    hsabank: { name: 'HSA Bank', tag: 'HB', bg: '#006A52' },
+    optum: { name: 'Optum Bank', tag: 'OP', bg: '#D9660C' },
+    other: { name: 'Other', tag: '·', bg: '#8a8478' }
+  };
+
+  document.querySelectorAll('.vendor-select').forEach(function (sel) {
+    var key = sel.getAttribute('data-vendor');
+    sel.appendChild(new Option('Provider…', ''));
+    Object.keys(VENDORS).forEach(function (k) {
+      sel.appendChild(new Option(VENDORS[k].name, k));
+    });
+    sel.value = (state.vendors && state.vendors[key]) || '';
+    function applyBadge() {
+      var b = document.getElementById('vb-' + key);
+      var v = VENDORS[sel.value];
+      if (!v) { b.hidden = true; return; }
+      b.hidden = false;
+      b.textContent = v.tag;
+      b.style.background = v.bg;
+      b.title = v.name;
+    }
+    sel.addEventListener('change', function () {
+      state.vendors[key] = sel.value;
+      save();
+      applyBadge();
+      queueRecalc(); /* provider names flow into the marching orders */
+    });
+    applyBadge();
+  });
+
+  function vendorSuffix(key) {
+    var v = VENDORS[state.vendors && state.vendors[key]];
+    return (v && v.name !== 'Other') ? ' at ' + v.name : '';
+  }
 
   /* ---------- sample data ---------- */
   document.getElementById('load-sample').addEventListener('click', function () {
@@ -614,6 +669,17 @@
 
   /* ---------- rendering ---------- */
   var el = function (id) { return document.getElementById(id); };
+  var lastAnalysis = null;
+
+  /* re-sync every bound input from state (after adopting the recommended plan) */
+  function syncInputs() {
+    document.querySelectorAll('[data-bind]').forEach(function (input) {
+      var v = getPath(input.getAttribute('data-bind'));
+      if (input.type === 'checkbox') input.checked = !!v;
+      else if (input.tagName === 'SELECT') input.value = v || input.value;
+      else input.value = (v === '' || v == null) ? '' : v;
+    });
+  }
 
   /* ---------- collapsible result sections (state remembered per device) ---------- */
   (function () {
@@ -688,6 +754,77 @@
     allocRow(tbodyRec, 'Employer match (unchanged)', rec.match);
     allocRow(tbodyRec, 'Debt minimums (unchanged)', rec.minimums);
   }
+
+  /* The recommended plan as directives: what to do with this month's money. */
+  function renderOrders(a) {
+    var list = el('orders');
+    var note = el('orders-match-note');
+    var adoptBtn = el('adopt-plan');
+    var adoptNote = el('adopt-note');
+    list.textContent = '';
+    var rec = a.recommended.firstAlloc, cur = a.current.firstAlloc;
+    var s = rec && rec.steps;
+
+    function order(text, amt) {
+      var li = document.createElement('li');
+      var t = document.createElement('span');
+      t.textContent = text;
+      var amount = document.createElement('span');
+      amount.className = 'amt';
+      amount.textContent = fmtMoneyFull(amt) + '/mo';
+      li.appendChild(t); li.appendChild(amount);
+      list.appendChild(li);
+    }
+
+    if (!rec || rec.budget <= 0) {
+      var li = document.createElement('li');
+      li.className = 'orders-empty';
+      li.textContent = 'Enter your income and what you can save each month, and this becomes a numbered to-do list.';
+      list.appendChild(li);
+      note.textContent = '';
+      adoptBtn.disabled = true;
+      adoptNote.textContent = '';
+      return;
+    }
+
+    if (s.match >= 1) order('Contribute to your 401(k)' + vendorSuffix('k401') + ' — captures the full employer match', s.match);
+    if (s.hiDebt >= 1) order('Attack the high-interest debt — highest APR first', s.hiDebt);
+    if (s.ef >= 1) order('Top up the emergency fund' + vendorSuffix('hysa'), s.ef);
+    if (s.hsa >= 1) order('Fund the HSA' + vendorSuffix('hsa') + ' — triple tax-advantaged', s.hsa);
+    if (s.roth >= 1) order('Fund your Roth IRA' + vendorSuffix('roth'), s.roth);
+    if (s.k401Max >= 1) order('Add more to the 401(k)' + vendorSuffix('k401') + ' — toward the annual max', s.k401Max);
+    if (s.lowDebt >= 1) order('Put extra on the remaining lower-rate debt', s.lowDebt);
+    if (s.overflow >= 1) order('Invest the rest in your brokerage' + vendorSuffix('brokerage'), s.overflow);
+
+    note.textContent = 'Total: ' + fmtMoneyFull(rec.budget) + '/mo of your money' +
+      (rec.match >= 1 ? ' — and your employer adds ' + fmtMoneyFull(rec.match) + '/mo on top' : '') +
+      (rec.minimums >= 1 ? '. Debt minimums (' + fmtMoneyFull(rec.minimums) + '/mo) keep getting paid separately.' : '.');
+
+    var matches = cur && ['k401', 'roth', 'hsa', 'hysa', 'brok', 'debtExtra'].every(function (k) {
+      return Math.abs(cur[k] - rec[k]) < 1;
+    });
+    adoptBtn.disabled = !!matches;
+    adoptBtn.textContent = matches ? '✓ This is your plan' : 'Make this my plan';
+    adoptNote.textContent = matches
+      ? 'Your inputs already match the recommended order.'
+      : 'Writes these amounts into your inputs — your plan becomes the recommended one.';
+  }
+
+  document.getElementById('adopt-plan').addEventListener('click', function () {
+    if (!lastAnalysis || !lastAnalysis.recommended.firstAlloc) return;
+    if (!confirm('Overwrite your current plan inputs with the recommended allocation?')) return;
+    var rec = lastAnalysis.recommended.firstAlloc;
+    var salaryMo = (parseFloat(state.profile.annualIncome) || 0) / 12;
+    if (salaryMo > 0) state.k401.contribPct = Math.round(rec.k401 / salaryMo * 1000) / 10;
+    state.roth.monthly = Math.round(rec.roth);
+    state.hsa.monthly = Math.round(rec.hsa);
+    state.hysa.monthly = Math.round(rec.hysa);
+    state.brokerage.monthly = Math.round(rec.brok);
+    state.extraDebtMonthly = Math.round(rec.debtExtra);
+    save();
+    syncInputs();
+    recalc();
+  });
 
   /* Concrete moves that turn the current plan into the recommended one. */
   function renderChecklist(a) {
@@ -817,6 +954,7 @@
     if (!ageOk) return;
 
     var a = NestEgg.analyze(state);
+    lastAnalysis = a;
     baseAge = a.inputs.profile.currentAge;
     var retAge = Math.round(a.inputs.profile.retirementAge);
 
@@ -921,6 +1059,7 @@
       chartDebt.update(debtPts);
     }
 
+    renderOrders(a);
     renderInsights(a);
     renderFifty(a);
     renderAllocTables(a);

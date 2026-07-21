@@ -391,6 +391,64 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 }
 .help-pop-title { font-weight: 600; color: var(--head); margin-bottom: 3px; }
 
+/* ---------- vendor badges ---------- */
+
+.vendor-row { display: flex; gap: 8px; align-items: center; margin: -2px 0 12px; }
+.vendor-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.vendor-select {
+  flex: 1;
+  max-width: 220px;
+  font-size: 12.5px;
+  padding: 6px 8px;
+  color: var(--ink-2);
+}
+
+/* ---------- marching orders ---------- */
+
+.orders { list-style: none; counter-reset: step; display: grid; gap: 10px; margin-top: 2px; }
+.orders li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.orders li::before {
+  content: counter(step);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--navy);
+  color: #f2ecdd;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  align-self: start;
+}
+.orders .amt { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.orders li.orders-empty { display: block; color: var(--muted); }
+.orders li.orders-empty::before { display: none; }
+#orders-match-note { margin: 14px 0 0; }
+
+.adopt-row { display: flex; gap: 12px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.adopt-btn { margin: 0; }
+.adopt-btn:disabled { opacity: 0.55; cursor: default; }
+.adopt-row .hint { margin-bottom: 0; }
+
 /* ---------- coaching corner ---------- */
 
 #insights { display: grid; gap: 16px; }
