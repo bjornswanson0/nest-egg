@@ -119,6 +119,76 @@
   var a9 = NestEgg.analyze({});
   t('blank analyze returns without NaN', isFinite(a9.current.final.netWorth), a9.current.final.netWorth);
 
+  /* 10. Tax haircut: pre-tax 401k dollars are worth (1 - rate) after tax */
+  var c10 = clone(blank);
+  c10.k401.balance = 100000;
+  c10.goals.taxRatePct = 20;
+  var a10 = NestEgg.analyze(c10);
+  t('pre-tax 100k at 20% rate -> 80k spendable', near(a10.spendable, 80000, 0.5), a10.spendable);
+
+  /* 11. Roth-type 401k contributions escape the haircut */
+  var c11 = clone(blank);
+  c11.profile.retirementAge = 31;
+  c11.profile.annualIncome = 120000;
+  c11.k401.contribPct = 10;
+  c11.k401.type = 'roth';
+  c11.goals.taxRatePct = 25;
+  var a11 = NestEgg.analyze(c11);
+  t('roth 401k contributions fully spendable',
+    near(a11.spendable, a11.current.final.invested, 0.01) && near(a11.spendable, 12000, 1),
+    a11.spendable + ' vs ' + a11.current.final.invested);
+
+  /* 12. Social Security shrinks the target; retiring before it adds a bridge */
+  var c12 = clone(blank);
+  c12.profile.retirementAge = 65;
+  c12.goals.retireSpendMonthly = 5000;
+  c12.goals.ssMonthly = 2000;
+  c12.goals.ssStartAge = 65;
+  var a12 = NestEgg.analyze(c12);
+  t('SS at retirement: target = (3000*12)/.04 = 900k', near(a12.target, 900000, 0.5), a12.target);
+  c12.goals.ssStartAge = 67;
+  var a12b = NestEgg.analyze(c12);
+  t('SS 2y after retirement adds 48k bridge', near(a12b.target, 948000, 0.5), a12b.target);
+
+  /* 13. Catch-up: 401k limit is 24500+8000 at age 50+ */
+  var c13 = clone(blank);
+  c13.profile.currentAge = 50; c13.profile.retirementAge = 51;
+  c13.profile.annualIncome = 240000;
+  c13.k401.contribPct = 30;
+  var r13 = NestEgg.simulate(NestEgg.normalize(c13), 'current');
+  t('age-50 catch-up caps year at 32500', near(r13.final.k401, 32500, 1), r13.final.k401.toFixed(2));
+
+  /* 14. Limits are inflation-indexed: year 2 cap = base * 1.1 at 10% inflation */
+  var c14 = clone(blank);
+  c14.profile.retirementAge = 32;
+  c14.profile.annualIncome = 600000;
+  c14.k401.contribPct = 30;
+  c14.goals.inflationPct = 10;
+  var r14 = NestEgg.simulate(NestEgg.normalize(c14), 'current');
+  t('indexed limits: 24500 + 26950 = 51450 over 2 years', near(r14.final.k401, 51450, 1), r14.final.k401.toFixed(2));
+
+  /* 15. Contribution growth: flat monthlies grow with raises when toggled */
+  var c15 = clone(blank);
+  c15.profile.retirementAge = 32;
+  c15.profile.incomeGrowthPct = 10;
+  c15.roth.monthly = 100;
+  c15.growContrib = true;
+  var r15 = NestEgg.simulate(NestEgg.normalize(c15), 'current');
+  t('growContrib on: 1200 + 1320 = 2520', near(r15.final.roth, 2520, 0.5), r15.final.roth.toFixed(2));
+  c15.growContrib = false;
+  var r15b = NestEgg.simulate(NestEgg.normalize(c15), 'current');
+  t('growContrib off: flat 2400', near(r15b.final.roth, 2400, 0.5), r15b.final.roth.toFixed(2));
+
+  /* 16. Return band brackets the central path */
+  var c16 = clone(blank);
+  c16.profile.retirementAge = 50;
+  c16.roth.balance = 10000; c16.roth.returnPct = 7;
+  var a16 = NestEgg.analyze(c16);
+  t('band: low < base < high at retirement',
+    a16.currentLow.final.invested < a16.current.final.invested &&
+    a16.current.final.invested < a16.currentHigh.final.invested,
+    [a16.currentLow.final.invested, a16.current.final.invested, a16.currentHigh.final.invested].join(' / '));
+
   var failed = out.filter(function (l) { return l.indexOf('FAIL') === 0; }).length;
   out.unshift((failed ? 'RESULT: FAIL (' + failed + ')' : 'RESULT: PASS') + ' — ' + out.length + ' checks');
   document.getElementById('out').textContent = out.join('\n');

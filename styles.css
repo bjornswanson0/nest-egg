@@ -17,6 +17,9 @@
   --head: #223c65;
   --rule: #223c65;
   --accent: #223c65;
+  --fb1: #223c65;
+  --fb2: #c8b89e;
+  --fb3: #0ca30c;
   --s1: #2a78d6;
   --s2: #008300;
   --s3: #e87ba4;
@@ -43,6 +46,9 @@
   --head: #f2ecdd;
   --rule: #c8b89e;
   --accent: #c8b89e;
+  --fb1: #4a6da8;
+  --fb2: #c8b89e;
+  --fb3: #0ca30c;
   --s1: #3987e5;
   --s2: #008300;
   --s3: #d55181;
@@ -65,6 +71,9 @@
     --head: #f2ecdd;
     --rule: #c8b89e;
     --accent: #c8b89e;
+    --fb1: #4a6da8;
+    --fb2: #c8b89e;
+    --fb3: #0ca30c;
     --s1: #3987e5;
     --s2: #008300;
     --s3: #d55181;
@@ -297,6 +306,23 @@ input[type="number"]:focus, input[type="text"]:focus {
   cursor: pointer;
 }
 .check input { accent-color: var(--accent); width: 15px; height: 15px; }
+.field-grid + .check { margin: 12px 0 0; }
+
+select {
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--axis);
+  border-radius: 4px;
+  padding: 7px 8px;
+  width: 100%;
+  min-width: 0;
+}
+select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.data-btns { display: flex; gap: 8px; }
+.data-btns .ghost-btn { flex: 1; margin-bottom: 0; }
 
 .ghost-btn {
   font: inherit;
@@ -392,6 +418,64 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .insight-body { font-size: 13px; color: var(--ink-2); margin-top: 3px; max-width: 72ch; }
 
 #milestones-wrap { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--grid); }
+
+/* ---------- 50/30/20 paycheck view ---------- */
+
+#fifty-wrap { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--grid); }
+
+.fifty-bar {
+  position: relative;
+  display: flex;
+  height: 14px;
+  margin: 26px 0 14px;
+}
+.fb-needs { width: 50%; background: var(--fb1); border-radius: 4px 0 0 4px; margin-right: 2px; }
+.fb-wants { width: 30%; background: var(--fb2); margin-right: 2px; }
+.fb-future { width: 20%; background: var(--fb3); opacity: 0.85; border-radius: 0 4px 4px 0; }
+
+.fb-marker {
+  position: absolute;
+  top: -7px;
+  width: 2px;
+  height: 28px;
+  background: var(--ink);
+}
+.fb-marker::after {
+  content: 'you';
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--ink-2);
+}
+
+.fifty-rows { display: grid; gap: 6px; font-size: 13px; color: var(--ink-2); }
+.fifty-rows .fr { display: flex; gap: 8px; align-items: baseline; }
+.fifty-rows .amt {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  min-width: 58px;
+  text-align: right;
+}
+.fifty-key { width: 10px; height: 10px; border-radius: 3px; flex: none; align-self: center; }
+.fk-needs { background: var(--fb1); }
+.fk-wants { background: var(--fb2); }
+.fk-future { background: var(--fb3); opacity: 0.85; }
+.fifty-you { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--grid); }
+.fifty-you .amt { padding-left: 18px; }
+.fifty-you.good .amt { color: var(--good-text); }
+.fifty-you.crit .amt { color: var(--crit); }
+
+/* ---------- action checklist ---------- */
+
+#checklist-wrap { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--grid); }
+
+.checklist { list-style: none; margin-top: 12px; display: grid; gap: 8px; }
+.checklist li { display: flex; gap: 10px; font-size: 13px; color: var(--ink-2); align-items: baseline; }
+.checklist li::before { content: '→'; color: var(--accent); font-weight: 700; flex: none; }
+.checklist .to { color: var(--ink); font-weight: 600; white-space: nowrap; }
 
 .ms-title {
   font-size: 12px;
@@ -514,6 +598,14 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .tip-key { width: 12px; height: 3px; border-radius: 2px; }
 .tip-val { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .tip-name { color: var(--ink-2); }
+.tip-range {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--grid);
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 
 .two-up {
   display: grid;

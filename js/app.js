@@ -13,15 +13,16 @@
 
   /* Personal fields start blank; only generic assumptions get defaults. */
   var DEFAULTS = {
-    profile: { currentAge: '', retirementAge: '', annualIncome: '', incomeGrowthPct: 3 },
-    k401: { balance: '', contribPct: '', matchRatePct: '', matchCapPct: '', returnPct: 7 },
+    profile: { currentAge: '', retirementAge: '', annualIncome: '', incomeGrowthPct: 3, takeHomeMonthly: '' },
+    k401: { balance: '', type: 'pretax', preTaxBalPct: 100, contribPct: '', matchRatePct: '', matchCapPct: '', returnPct: 7 },
     roth: { balance: '', monthly: '', returnPct: 7 },
     hsa: { eligible: false, balance: '', monthly: '', returnPct: 7 },
     hysa: { balance: '', apyPct: 3.5, monthly: '', efTarget: '' },
     brokerage: { balance: '', monthly: '', returnPct: 7 },
     debts: [],
     extraDebtMonthly: '',
-    goals: { retireSpendMonthly: '', inflationPct: 2.5, swrPct: 4 },
+    growContrib: true,
+    goals: { retireSpendMonthly: '', inflationPct: 2.5, swrPct: 4, taxRatePct: 15, ssMonthly: '', ssStartAge: 67 },
     limits: { k401: 24500, ira: 7500, hsa: 4400, highAprPct: 7 }
   };
 
@@ -29,8 +30,8 @@
 
   /* A fictional example so the page is explorable before you enter anything. */
   var SAMPLE = {
-    profile: { currentAge: 32, retirementAge: 65, annualIncome: 85000, incomeGrowthPct: 3 },
-    k401: { balance: 40000, contribPct: 6, matchRatePct: 50, matchCapPct: 6, returnPct: 7 },
+    profile: { currentAge: 32, retirementAge: 65, annualIncome: 85000, incomeGrowthPct: 3, takeHomeMonthly: 5300 },
+    k401: { balance: 40000, type: 'pretax', preTaxBalPct: 100, contribPct: 6, matchRatePct: 50, matchCapPct: 6, returnPct: 7 },
     roth: { balance: 12000, monthly: 300, returnPct: 7 },
     hsa: { eligible: true, balance: 5000, monthly: 150, returnPct: 7 },
     hysa: { balance: 8000, apyPct: 3.8, monthly: 200, efTarget: 15000 },
@@ -40,7 +41,8 @@
       { name: 'Car loan', balance: 9800, aprPct: 6.9, minPayment: 310 }
     ],
     extraDebtMonthly: 200,
-    goals: { retireSpendMonthly: 5000, inflationPct: 2.5, swrPct: 4 },
+    growContrib: true,
+    goals: { retireSpendMonthly: 5000, inflationPct: 2.5, swrPct: 4, taxRatePct: 15, ssMonthly: 2200, ssStartAge: 67 },
     limits: { k401: 24500, ira: 7500, hsa: 4400, highAprPct: 7 }
   };
 
@@ -92,10 +94,12 @@
     var path = input.getAttribute('data-bind');
     var v = getPath(path);
     if (input.type === 'checkbox') input.checked = !!v;
+    else if (input.tagName === 'SELECT') input.value = v || input.value;
     else input.value = (v === '' || v == null) ? '' : v;
 
     input.addEventListener('input', function () {
       if (input.type === 'checkbox') setPath(path, input.checked);
+      else if (input.tagName === 'SELECT') setPath(path, input.value);
       else setPath(path, input.value === '' ? '' : parseFloat(input.value));
       save();
       queueRecalc();
@@ -150,6 +154,39 @@
     if (!confirm('Clear every number you’ve entered on this device?')) return;
     store.del('ne_state');
     location.reload();
+  });
+
+  /* ---------- export / import (data stays yours) ---------- */
+  document.getElementById('export-data').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'nest-egg-numbers.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+  });
+  var importFile = document.getElementById('import-file');
+  document.getElementById('import-data').addEventListener('click', function () {
+    importFile.click();
+  });
+  importFile.addEventListener('change', function () {
+    var f = importFile.files && importFile.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var obj = JSON.parse(reader.result);
+        if (!obj || typeof obj !== 'object' || !obj.profile) throw new Error('shape');
+        store.set('ne_state', JSON.stringify(obj));
+        location.hash = '';
+        location.reload();
+      } catch (e) {
+        alert('That file doesn’t look like a Nest Egg export.');
+      }
+    };
+    reader.readAsText(f);
   });
 
   /* ---------- theme ---------- */
@@ -224,6 +261,26 @@
     highApr: {
       title: 'What counts as “high interest”?',
       body: 'Debt above this APR gets treated as an emergency — paid off before most investing — because interest saved is a guaranteed return that beats an expected one. Below it, minimum payments plus investing usually wins. ~7% is a common dividing line.'
+    },
+    k401type: {
+      title: 'Pre-tax vs. Roth 401(k)',
+      body: 'Pre-tax (traditional) contributions skip taxes now but owe them in retirement; Roth contributions are taxed now and come out tax-free. This tool discounts pre-tax dollars by your retirement tax rate so the nest egg is honest. Employer match is always pre-tax.'
+    },
+    taxrate: {
+      title: 'Tax rate in retirement',
+      body: 'Your best guess at the effective (average, not top-bracket) rate you’ll pay on pre-tax 401(k) withdrawals. Most retirees land somewhere around 10–20% — retirement income is usually smaller than working income, and only the pre-tax slice is taxed.'
+    },
+    ss: {
+      title: 'Social Security',
+      body: 'Your estimated monthly benefit in today’s dollars — ssa.gov/myaccount shows your real number. It shrinks the nest egg you need, and it’s inflation-adjusted by law. Claiming later (up to 70) permanently raises the check.'
+    },
+    growc: {
+      title: 'Growing contributions',
+      body: 'When on, your flat monthly contributions (Roth, HSA, HYSA, brokerage, extra debt) rise with your raises, keeping your savings rate steady. When off, $300/mo today is still $300/mo at 60 — which quietly becomes a much smaller share of your income.'
+    },
+    fifty: {
+      title: 'The 50/30/20 rule',
+      body: 'A budgeting rule of thumb (popularized by Elizabeth Warren): after tax, put ~50% of your paycheck toward needs (housing, groceries, minimum payments), ~30% toward wants, and ~20% toward your future — savings, investing, and extra debt payoff.'
     }
   };
 
@@ -344,7 +401,7 @@
     /* the compounding lesson: re-run the sim with +1% of salary to the 401(k) */
     var plus = clone(state);
     plus.k401.contribPct = (parseFloat(plus.k401.contribPct) || 0) + 1;
-    var delta = NestEgg.analyze(plus).current.final.invested - a.current.final.invested;
+    var delta = NestEgg.analyze(plus).spendable - a.spendable;
     if (delta > 0) {
       insightRow(host, 'info', '↑',
         'One more 1% today ≈ ' + fmtMoney(delta) + ' at ' + retAge,
@@ -428,11 +485,19 @@
 
   var chartProjection = NestEggCharts.makeChart(document.getElementById('chart-projection'), {
     mode: 'lines', height: 260, xMeta: chartXMeta,
-    ariaLabel: 'Net worth projection, your plan versus the recommended order. Full values are in the projection table below.',
+    ariaLabel: 'Net worth projection, your plan versus the recommended order, with a band showing returns two points higher or lower. Full values are in the projection table below.',
     series: [
       { key: 'cur', name: 'Your plan', color: '--s1' },
       { key: 'rec', name: 'Recommended', color: '--s2' }
-    ]
+    ],
+    band: { low: 'curLow', high: 'curHigh', color: '--s1' },
+    tipExtra: function (tip, p) {
+      if (p.curLow == null) return;
+      var row = document.createElement('div');
+      row.className = 'tip-range';
+      row.textContent = '±2% returns: ' + fmtMoney(p.curLow) + ' – ' + fmtMoney(p.curHigh);
+      tip.appendChild(row);
+    }
   });
   makeLegend(document.getElementById('legend-projection'),
     [{ name: 'Your plan', color: '--s1' }, { name: 'Recommended', color: '--s2' }], 'line');
@@ -510,10 +575,101 @@
     allocRow(tbodyRec, 'Debt minimums (unchanged)', rec.minimums);
   }
 
+  /* Concrete moves that turn the current plan into the recommended one. */
+  function renderChecklist(a) {
+    var wrap = el('checklist-wrap'), list = el('checklist');
+    var cur = a.current.firstAlloc, rec = a.recommended.firstAlloc;
+    list.textContent = '';
+    if (!cur || !rec) { wrap.hidden = true; return; }
+    var buckets = [
+      ['your 401(k) contribution', cur.k401, rec.k401],
+      ['Roth IRA', cur.roth, rec.roth],
+      ['HSA', cur.hsa, rec.hsa],
+      ['HYSA / emergency fund', cur.hysa, rec.hysa],
+      ['brokerage', cur.brok, rec.brok],
+      ['extra debt payments', cur.debtExtra, rec.debtExtra]
+    ];
+    var moves = 0;
+    buckets.forEach(function (b) {
+      var d = b[2] - b[1];
+      if (Math.abs(d) < 1) return;
+      moves++;
+      var li = document.createElement('li');
+      var text = document.createElement('span');
+      text.textContent = (d > 0 ? 'Raise ' : 'Trim ') + b[0] + ' by ' +
+        fmtMoneyFull(Math.abs(d)) + '/mo ';
+      var to = document.createElement('span');
+      to.className = 'to';
+      to.textContent = '→ ' + fmtMoneyFull(b[2]) + '/mo';
+      li.appendChild(text); li.appendChild(to);
+      list.appendChild(li);
+    });
+    if (!moves) {
+      var ok = document.createElement('li');
+      ok.textContent = 'Your plan already matches the recommended order — nothing to move.';
+      list.appendChild(ok);
+    }
+    wrap.hidden = false;
+  }
+
+  /* 50/30/20: needs / wants / future-you, against take-home pay. */
+  function renderFifty(a) {
+    var wrap = el('fifty-wrap');
+    var p = a.inputs.profile;
+    var takeHome = p.takeHomeMonthly || (p.annualIncome ? p.annualIncome / 12 * 0.75 : 0);
+    if (!takeHome) { wrap.hidden = true; return; }
+    var estimated = !p.takeHomeMonthly;
+
+    var fa = a.current.firstAlloc;
+    /* the "future you" bucket: your own dollars — savings, investing, extra debt.
+       Minimum payments count as needs under the classic rule. */
+    var future = fa ? fa.k401 + fa.roth + fa.hsa + fa.hysa + fa.brok + fa.debtExtra : 0;
+    var pct = future / takeHome * 100;
+
+    el('fifty-note').textContent = 'Take-home ' + fmtMoneyFull(takeHome) + '/mo' +
+      (estimated ? ' (estimated at 75% of gross — enter yours under “About you” for accuracy)' : '') +
+      ', split the classic way:';
+
+    el('fifty-marker').style.left = Math.min(100, Math.max(0, pct)) + '%';
+
+    var rows = el('fifty-rows');
+    rows.textContent = '';
+    var data = [
+      ['fk-needs', 'Needs — housing, groceries, insurance, minimum payments', '50%', takeHome * 0.5],
+      ['fk-wants', 'Wants — the fun column', '30%', takeHome * 0.3],
+      ['fk-future', 'Future you — saving, investing, extra debt payoff', '20%', takeHome * 0.2]
+    ];
+    data.forEach(function (r) {
+      var div = document.createElement('div');
+      div.className = 'fr';
+      var key = document.createElement('span');
+      key.className = 'fifty-key ' + r[0];
+      var amt = document.createElement('span');
+      amt.className = 'amt';
+      amt.textContent = fmtMoneyFull(r[3]);
+      var lab = document.createElement('span');
+      lab.textContent = r[2] + ' · ' + r[1];
+      div.appendChild(key); div.appendChild(amt); div.appendChild(lab);
+      rows.appendChild(div);
+    });
+    var you = document.createElement('div');
+    you.className = 'fr fifty-you ' + (pct >= 20 ? 'good' : pct >= 12 ? 'warn' : 'crit');
+    var youAmt = document.createElement('span');
+    youAmt.className = 'amt';
+    youAmt.textContent = fmtMoneyFull(future);
+    var youLab = document.createElement('span');
+    youLab.textContent = 'is what you actually put toward future you — ' + Math.round(pct) +
+      '% of take-home' + (pct >= 20 ? ' — ahead of the 20% bucket.' : pct >= 12 ? ' — close; the marker shows the gap to 20%.' : ' — well short of the 20% bucket.');
+    you.appendChild(youAmt); you.appendChild(youLab);
+    rows.appendChild(you);
+    wrap.hidden = false;
+  }
+
   function renderTable(a) {
     var tbody = document.querySelector('#projection-table tbody');
     tbody.textContent = '';
     var cs = a.current.series, rs = a.recommended.series;
+    var lo = a.currentLow.series, hi = a.currentHigh.series;
     for (var i = 11; i < cs.length; i += 12) addRow(i);
     if ((cs.length - 1) % 12 !== 11 && cs.length) addRow(cs.length - 1);
     function addRow(i) {
@@ -522,7 +678,8 @@
       var cells = [
         Math.round(p.age),
         fmtMoneyFull(p.k401), fmtMoneyFull(p.roth), fmtMoneyFull(p.hsa), fmtMoneyFull(p.hysa),
-        fmtMoneyFull(p.brok), fmtMoneyFull(p.debt), fmtMoneyFull(p.netWorth), fmtMoneyFull(r.netWorth)
+        fmtMoneyFull(p.brok), fmtMoneyFull(p.debt), fmtMoneyFull(p.netWorth), fmtMoneyFull(r.netWorth),
+        fmtMoneyFull(lo[i].netWorth), fmtMoneyFull(hi[i].netWorth)
       ];
       cells.forEach(function (c, j) {
         var td = document.createElement(j === 0 ? 'th' : 'td');
@@ -547,11 +704,12 @@
     baseAge = a.inputs.profile.currentAge;
     var retAge = Math.round(a.inputs.profile.retirementAge);
 
-    /* nest egg tile */
-    el('kpi-nestegg').textContent = fmtMoney(a.current.final.invested);
+    /* nest egg tile — spendable (after-tax) is the honest headline */
+    el('kpi-nestegg').textContent = fmtMoney(a.spendable);
     el('kpi-nestegg-today').textContent =
-      '≈ ' + fmtMoney(a.finalTodayDollars) + ' in today’s dollars · supports ' +
-      fmtMoney(a.retireIncomeMonthlyToday) + '/mo';
+      '≈ ' + fmtMoney(a.finalTodayDollars) + ' in today’s dollars (' + fmtMoney(a.grossFinal) +
+      ' gross) · supports ' + fmtMoney(a.retireIncomeMonthlyToday) + '/mo' +
+      (a.inputs.goals.ssMonthly > 0 ? ' incl. Social Security' : '');
 
     /* coverage tile + meter */
     var meter = el('kpi-meter');
@@ -561,11 +719,15 @@
       el('kpi-coverage').textContent = (pct >= 999 ? '999+' : Math.round(pct)) + '%';
       fill.style.width = Math.min(100, pct) + '%';
       meter.className = 'meter ' + (pct >= 100 ? 'good' : pct >= 60 ? 'warn' : 'crit');
-      var gap = a.current.final.invested - a.target;
-      el('kpi-coverage-sub').textContent =
+      var gap = a.spendable - a.target;
+      var covText =
         (pct >= 100 ? 'On track — ' + fmtMoney(gap) + ' beyond your goal of '
           : (pct >= 60 ? 'Getting there — ' : 'Off track — ') + fmtMoney(-gap) + ' short of your goal of ') +
         fmtMoney(a.target);
+      if (a.earliestRetireAge && a.earliestRetireAge < retAge - 0.4) {
+        covText += ' · could retire ≈ age ' + Math.round(a.earliestRetireAge);
+      }
+      el('kpi-coverage-sub').textContent = covText;
     } else {
       el('kpi-coverage').textContent = '—';
       fill.style.width = '0%';
@@ -599,7 +761,7 @@
     } else if (d > 0) {
       boost.textContent = '+' + fmtMoney(d);
       boost.classList.add('delta-up');
-      boostSub.textContent = 'Extra net worth at ' + retAge + ' from reordering the same dollars.';
+      boostSub.textContent = 'Extra spendable dollars at ' + retAge + ' from reordering the same budget.';
     } else {
       boost.textContent = '−' + fmtMoney(-d);
       boost.classList.add('delta-down');
@@ -608,8 +770,12 @@
 
     /* charts */
     var cs = a.current.series, rsr = a.recommended.series;
+    var lo = a.currentLow.series, hi = a.currentHigh.series;
     var proj = cs.map(function (pt, i) {
-      return { age: pt.age, cur: pt.netWorth, rec: rsr[i].netWorth };
+      return {
+        age: pt.age, cur: pt.netWorth, rec: rsr[i].netWorth,
+        curLow: lo[i].netWorth, curHigh: hi[i].netWorth
+      };
     });
     var goal = a.target > 0 ? { value: a.target, label: 'Goal ' + fmtMoney(a.target) } : null;
     chartProjection.update(proj, goal);
@@ -632,7 +798,9 @@
     }
 
     renderInsights(a);
+    renderFifty(a);
     renderAllocTables(a);
+    renderChecklist(a);
     renderTable(a);
   }
 

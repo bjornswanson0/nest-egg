@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
 
@@ -56,6 +56,9 @@
               <input type="number" data-bind="profile.annualIncome" min="0" step="1000" inputmode="decimal" placeholder="85,000"></span></label>
           <label class="field"><span>Annual raises</span>
             <span class="control"><input type="number" data-bind="profile.incomeGrowthPct" min="0" max="20" step="0.5" inputmode="decimal" placeholder="3"><span class="affix">%</span></span></label>
+          <label class="field span2"><span>Monthly take-home pay <small>(optional — powers the 50/30/20 view)</small></span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="profile.takeHomeMonthly" min="0" step="100" inputmode="decimal" placeholder="estimated from gross if blank"></span></label>
         </div>
       </section>
 
@@ -73,6 +76,13 @@
             <span class="control"><input type="number" data-bind="k401.matchRatePct" min="0" max="200" step="5" inputmode="decimal" placeholder="50"><span class="affix">%</span></span></label>
           <label class="field"><span>…of the first</span>
             <span class="control"><input type="number" data-bind="k401.matchCapPct" min="0" max="100" step="0.5" inputmode="decimal" placeholder="6"><span class="affix">% of pay</span></span></label>
+          <label class="field"><span>Contribution type <button type="button" class="help-btn" data-help="k401type" aria-label="Pre-tax versus Roth 401(k)">?</button></span>
+            <select data-bind="k401.type">
+              <option value="pretax">Pre-tax (traditional)</option>
+              <option value="roth">Roth</option>
+            </select></label>
+          <label class="field"><span>Balance that's pre-tax</span>
+            <span class="control"><input type="number" data-bind="k401.preTaxBalPct" min="0" max="100" step="5" inputmode="decimal"><span class="affix">%</span></span></label>
         </div>
       </section>
 
@@ -158,7 +168,14 @@
             <span class="control"><input type="number" data-bind="goals.inflationPct" min="0" max="10" step="0.1" inputmode="decimal"><span class="affix">%/yr</span></span></label>
           <label class="field"><span>Withdrawal rate <button type="button" class="help-btn" data-help="swr" aria-label="What is a withdrawal rate?">?</button></span>
             <span class="control"><input type="number" data-bind="goals.swrPct" min="1" max="10" step="0.25" inputmode="decimal"><span class="affix">%/yr</span></span></label>
+          <label class="field span2"><span>Tax rate in retirement <button type="button" class="help-btn" data-help="taxrate" aria-label="What is the retirement tax rate for?">?</button></span>
+            <span class="control"><input type="number" data-bind="goals.taxRatePct" min="0" max="50" step="1" inputmode="decimal"><span class="affix">% on pre-tax dollars</span></span></label>
+          <label class="field"><span>Social Security <button type="button" class="help-btn" data-help="ss" aria-label="How is Social Security used?">?</button></span>
+            <span class="control"><span class="affix">$</span><input type="number" data-bind="goals.ssMonthly" min="0" step="100" inputmode="decimal" placeholder="0"><span class="affix">/mo</span></span></label>
+          <label class="field"><span>…starting at age</span>
+            <span class="control"><input type="number" data-bind="goals.ssStartAge" min="62" max="70" step="1" inputmode="numeric" placeholder="67"></span></label>
         </div>
+        <label class="check"><input type="checkbox" data-bind="growContrib"> Grow my monthly contributions with raises <button type="button" class="help-btn" data-help="growc" aria-label="What does growing contributions mean?">?</button></label>
         <details class="advanced">
           <summary>Advanced: contribution limits &amp; thresholds</summary>
           <div class="field-grid">
@@ -177,6 +194,11 @@
         </details>
       </section>
 
+      <div class="data-btns">
+        <button type="button" id="export-data" class="ghost-btn">Download my numbers</button>
+        <button type="button" id="import-data" class="ghost-btn">Load from file</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
       <button type="button" id="reset" class="ghost-btn danger">Clear all my numbers</button>
     </aside>
 
@@ -192,7 +214,7 @@
 
         <div class="kpi-row">
           <div class="tile">
-            <span class="tile-label">Nest egg at retirement</span>
+            <span class="tile-label">Spendable nest egg (after tax)</span>
             <span class="tile-value" id="kpi-nestegg">—</span>
             <span class="tile-sub" id="kpi-nestegg-today">—</span>
           </div>
@@ -220,6 +242,15 @@
             <span class="hint" style="margin-bottom:0">personalized to your salary and plan</span>
           </div>
           <div id="insights"></div>
+          <div id="fifty-wrap" hidden>
+            <h3 class="ms-title">Your paycheck, 50/30/20 <button type="button" class="help-btn" data-help="fifty" aria-label="What is the 50/30/20 rule?">?</button></h3>
+            <p class="hint" id="fifty-note"></p>
+            <div class="fifty-bar" aria-hidden="true">
+              <span class="fb-needs"></span><span class="fb-wants"></span><span class="fb-future"></span>
+              <span class="fb-marker" id="fifty-marker"></span>
+            </div>
+            <div class="fifty-rows" id="fifty-rows"></div>
+          </div>
           <div id="milestones-wrap" hidden>
             <h3 class="ms-title">Savings benchmarks for your salary</h3>
             <p class="hint">A common rule of thumb: retirement savings as a multiple of your salary at each age.</p>
@@ -234,6 +265,7 @@
             </div>
             <div class="legend" id="legend-projection"></div>
           </div>
+          <p class="hint">Shaded band: your plan if investment returns run 2 points hotter or colder than assumed.</p>
           <div id="chart-projection"></div>
         </section>
 
@@ -249,6 +281,10 @@
               <caption>Recommended order <span class="cap-sub">/mo, month one</span></caption>
               <tbody id="alloc-rec"></tbody>
             </table>
+          </div>
+          <div id="checklist-wrap" hidden>
+            <h3 class="ms-title">To follow the recommended order this month</h3>
+            <ul id="checklist" class="checklist"></ul>
           </div>
         </section>
 
@@ -271,7 +307,7 @@
           <div class="table-scroll">
             <table id="projection-table">
               <thead>
-                <tr><th scope="col">Age</th><th scope="col">401(k)</th><th scope="col">Roth IRA</th><th scope="col">HSA</th><th scope="col">HYSA</th><th scope="col">Brokerage</th><th scope="col">Debt</th><th scope="col">Net worth</th><th scope="col">Recommended net worth</th></tr>
+                <tr><th scope="col">Age</th><th scope="col">401(k)</th><th scope="col">Roth IRA</th><th scope="col">HSA</th><th scope="col">HYSA</th><th scope="col">Brokerage</th><th scope="col">Debt</th><th scope="col">Net worth</th><th scope="col">Recommended</th><th scope="col">Band low</th><th scope="col">Band high</th></tr>
               </thead>
               <tbody></tbody>
             </table>
@@ -282,12 +318,15 @@
           <summary><h2>How the math works</h2></summary>
           <ul>
             <li>Everything compounds monthly; contributions land before growth each month.</li>
-            <li>Employer match is applied per paycheck up to your match cap — no year-end true-up.</li>
-            <li>Annual contribution limits (401(k), IRA, HSA) cap contributions within each year; the blocked dollars keep working elsewhere.</li>
-            <li>Extra debt payments go to the highest-APR balance first (avalanche). When a debt is paid off, its old minimum payment rolls into your plan instead of disappearing.</li>
+            <li>Employer match is applied per paycheck up to your match cap — no year-end true-up. Match dollars are always pre-tax.</li>
+            <li><strong>Taxes:</strong> pre-tax 401(k) dollars (including the match) are discounted by your "tax rate in retirement" in every spendable figure; Roth and HSA dollars are treated as tax-free, and brokerage gains aren't taxed (a simplification in your favor).</li>
+            <li><strong>Social Security</strong> shrinks the nest egg you need: the goal covers spending minus your benefit, plus a bridge (benefit × years) if you retire before it starts. The benefit is assumed to keep pace with inflation.</li>
+            <li>Annual contribution limits are indexed to your inflation assumption and include catch-ups: +$8,000 (401(k)) and +$1,100 (IRA) from age 50, +$1,000 (HSA) from 55. Blocked dollars keep working elsewhere.</li>
+            <li>When "grow my monthly contributions with raises" is on, flat monthly amounts (Roth, HSA, HYSA, brokerage, extra debt) rise with your income so your savings rate holds steady instead of quietly decaying for decades.</li>
+            <li>Extra debt payments go to the highest-APR balance first (avalanche). When a debt is paid off, its old minimum payment rolls into your plan instead of disappearing. Card minimums are modeled as fixed dollars — real card minimums shrink with the balance, so payoff runs slightly faster here.</li>
             <li>The <em>recommended order</em> re-allocates the same monthly budget: employer match → debt at or above your high-interest threshold → emergency fund → HSA → Roth IRA → 401(k) to the annual max → remaining debt → taxable brokerage. Your plan and the recommended plan always spend identical dollars, so the gap between the two lines is pure ordering.</li>
-            <li>Your nest-egg goal is monthly spending × 12, inflated to retirement age, divided by your withdrawal rate (the "4% rule" by default).</li>
-            <li>Taxes aren't modeled — pre-tax and Roth dollars are both taken at face value, so treat results as directional, not gospel.</li>
+            <li>The shaded band runs your exact plan with every investment return 2 points higher and lower — a reminder that the smooth line is the middle of a wide range, not a promise.</li>
+            <li>Roth IRA income limits aren't enforced — at high incomes the model assumes you'd use the backdoor. The HSA's payroll FICA advantage isn't counted (it's slightly better than shown).</li>
           </ul>
           <p class="disclaimer">This is an educational tool, not financial advice. Numbers are projections built on your assumptions — real markets won't cooperate so smoothly.</p>
         </details>
@@ -314,8 +353,8 @@
   </div>
 </template>
 
-<script src="js/engine.js?v=2"></script>
-<script src="js/charts.js?v=1"></script>
-<script src="js/app.js?v=4"></script>
+<script src="js/engine.js?v=3"></script>
+<script src="js/charts.js?v=2"></script>
+<script src="js/app.js?v=5"></script>
 </body>
 </html>

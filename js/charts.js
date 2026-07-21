@@ -102,6 +102,11 @@
             if (v > maxVal) maxVal = v;
             if (v < minVal) minVal = v;
           }
+          if (opts.band) {
+            var bh = p[opts.band.high] || 0, bl = p[opts.band.low] || 0;
+            if (bh > maxVal) maxVal = bh;
+            if (bl < minVal) minVal = bl;
+          }
         }
       }
       if (state.goal && state.goal.value > maxVal) maxVal = state.goal.value;
@@ -180,6 +185,17 @@
           cumPrev = cumNow;
         }
       } else {
+        /* uncertainty band: a quiet wash behind the lines */
+        if (opts.band && pts.length > 1 && pts.some(function (q) { return q[opts.band.high] != null; })) {
+          var bd = '';
+          for (i = 0; i < pts.length; i++) {
+            bd += (i ? 'L' : 'M') + x(pts[i].age).toFixed(1) + ' ' + y(pts[i][opts.band.high] || 0).toFixed(1);
+          }
+          for (i = pts.length - 1; i >= 0; i--) {
+            bd += 'L' + x(pts[i].age).toFixed(1) + ' ' + y(pts[i][opts.band.low] || 0).toFixed(1);
+          }
+          svg.appendChild(el('path', { d: bd + 'Z' }, 'fill:var(' + opts.band.color + ');opacity:.08'));
+        }
         for (j = 0; j < series.length; j++) {
           var sr = series[j];
           if (opts.mode === 'area') {
