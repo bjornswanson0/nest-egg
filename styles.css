@@ -559,6 +559,105 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .adopt-btn:disabled { opacity: 0.55; cursor: default; }
 .adopt-row .hint { margin-bottom: 0; }
 
+/* ---------- coaching scorecard + #1 move ---------- */
+
+#coach-summary { display: grid; gap: 14px; margin-bottom: 20px; }
+#coach-summary:empty { display: none; }
+
+.coach-score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.coach-score-lead { display: flex; align-items: baseline; gap: 8px; }
+.coach-score-num { font-size: 22px; font-weight: 700; color: var(--head); }
+.coach-score-lab {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.coach-dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.coach-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+}
+.coach-dot.on { background: var(--good); }
+.coach-dot.off { background: transparent; border: 1.5px dashed var(--axis); }
+
+.coach-move {
+  border: 1px solid var(--hairline);
+  border-left: 4px solid var(--navy);
+  border-radius: 6px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--navy) 5%, var(--surface));
+}
+.coach-move.tone-crit { border-left-color: var(--crit); background: color-mix(in srgb, var(--crit) 6%, var(--surface)); }
+.coach-move.tone-warn { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 9%, var(--surface)); }
+.coach-move.tone-good { border-left-color: var(--good); background: color-mix(in srgb, var(--good) 7%, var(--surface)); }
+.coach-move-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.coach-move-title { font-size: 15px; font-weight: 700; color: var(--head); margin-top: 4px; }
+.coach-move-body { font-size: 13px; color: var(--ink-2); margin-top: 4px; max-width: 74ch; }
+
+/* ---------- setup at a glance ---------- */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px 32px;
+}
+.sum-group { display: grid; gap: 6px; align-content: start; }
+.sum-h {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rule);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--grid);
+  margin-bottom: 2px;
+}
+.sum-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+}
+.sum-l { color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+.sum-v {
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.sum-badge {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 8.5px;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+
 /* ---------- coaching corner ---------- */
 
 #insights { display: grid; gap: 16px; }

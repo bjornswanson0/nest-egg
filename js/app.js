@@ -452,6 +452,8 @@
     { age: 50, mult: 6 }, { age: 55, mult: 7 }, { age: 60, mult: 8 }, { age: 67, mult: 10 }
   ];
 
+  var SEV = { crit: 0, warn: 1, info: 2, good: 3 };
+
   function insightRow(host, tone, glyph, title, body) {
     var row = document.createElement('div');
     row.className = 'insight tone-' + tone;
@@ -471,9 +473,57 @@
     host.appendChild(row);
   }
 
+  /* Top-of-coaching scorecard: fundamentals met, and the single highest-value move. */
+  function renderCoachSummary(fundamentals, topMove) {
+    var host = el('coach-summary');
+    host.textContent = '';
+    var met = fundamentals.filter(function (f) { return f.met; }).length;
+    var total = fundamentals.length;
+
+    var score = document.createElement('div');
+    score.className = 'coach-score';
+    var lead = document.createElement('div');
+    lead.className = 'coach-score-lead';
+    var big = document.createElement('span');
+    big.className = 'coach-score-num';
+    big.textContent = met + '/' + total;
+    var lab = document.createElement('span');
+    lab.className = 'coach-score-lab';
+    lab.textContent = 'money fundamentals in place';
+    lead.appendChild(big); lead.appendChild(lab);
+    var dots = document.createElement('div');
+    dots.className = 'coach-dots';
+    fundamentals.forEach(function (f) {
+      var d = document.createElement('span');
+      d.className = 'coach-dot ' + (f.met ? 'on' : 'off');
+      d.title = f.label + (f.met ? ' ✓' : ' — not yet');
+      d.textContent = f.met ? '✓' : '';
+      dots.appendChild(d);
+    });
+    score.appendChild(lead); score.appendChild(dots);
+    host.appendChild(score);
+
+    if (topMove) {
+      var move = document.createElement('div');
+      move.className = 'coach-move tone-' + topMove.tone;
+      var mh = document.createElement('div');
+      mh.className = 'coach-move-head';
+      mh.textContent = topMove.done ? 'You’re dialed in' : 'Your #1 move right now';
+      var mt = document.createElement('div');
+      mt.className = 'coach-move-title';
+      mt.textContent = topMove.title;
+      var mb = document.createElement('p');
+      mb.className = 'coach-move-body';
+      mb.textContent = topMove.body;
+      move.appendChild(mh); move.appendChild(mt); move.appendChild(mb);
+      host.appendChild(move);
+    }
+  }
+
   function renderInsights(a) {
     var host = el('insights');
     host.textContent = '';
+    el('coach-summary').textContent = '';
     var inp = a.inputs, p = inp.profile;
     var salary = p.annualIncome;
     var retAge = Math.round(p.retirementAge);
@@ -492,41 +542,115 @@
     var rate = savedTotal / gross * 100;
     var onePct = salary / 100 / 12;
 
-    var tone = rate >= 15 ? 'good' : rate >= 10 ? 'warn' : 'crit';
-    insightRow(host, tone, tone === 'good' ? '✓' : '!',
+    /* --- shared facts --- */
+    var hasMatch = inp.k401.matchRatePct > 0 && inp.k401.matchCapPct > 0;
+    var matchGap = hasMatch ? Math.max(0, inp.k401.matchCapPct - inp.k401.contribPct) : 0;
+    var missedMatch = inp.k401.matchRatePct / 100 * matchGap / 100 * salary;
+    var topApr = 0;
+    inp.debts.forEach(function (d) { if (d.aprPct >= inp.limits.highAprPct && d.aprPct > topApr) topApr = d.aprPct; });
+    var efGap = inp.hysa.efTarget > 0 ? Math.max(0, inp.hysa.efTarget - inp.hysa.balance) : 0;
+    var hsaAnnual = inp.hsa.monthly * 12;
+    var hsaGap = inp.hsa.eligible ? Math.max(0, inp.limits.hsa - hsaAnnual) : 0;
+    var rothAnnual = inp.roth.monthly * 12;
+    var rothGap = Math.max(0, inp.limits.ira - rothAnnual);
+    var cashExcess = inp.hysa.efTarget > 0 ? Math.max(0, inp.hysa.balance - inp.hysa.efTarget * 1.15) : 0;
+    var onTrack = a.coverage != null && a.coverage >= 1;
+
+    /* --- fundamentals scorecard (only applicable ones count) --- */
+    var fundamentals = [];
+    if (hasMatch) fundamentals.push({ label: 'Full employer match', met: matchGap <= 0.01 });
+    fundamentals.push({ label: 'No high-interest debt', met: topApr === 0 });
+    if (inp.hysa.efTarget > 0) fundamentals.push({ label: 'Emergency fund funded', met: efGap <= 1 });
+    fundamentals.push({ label: 'Saving 15%+ of income', met: rate >= 15 });
+    if (inp.hsa.eligible) fundamentals.push({ label: 'HSA funded', met: inp.hsa.monthly > 0 });
+    fundamentals.push({ label: 'Roth IRA funded', met: inp.roth.monthly > 0 });
+    if (a.coverage != null) fundamentals.push({ label: 'On track to retire', met: onTrack });
+
+    /* --- prioritized #1 move (first unmet, in recommended-order priority) --- */
+    var topMove = null;
+    if (hasMatch && matchGap > 0.01) {
+      topMove = { tone: 'crit', title: 'Capture your full employer match',
+        body: 'Raise your 401(k) from ' + (inp.k401.contribPct || 0) + '% to ' + inp.k401.matchCapPct + '% of pay and you collect ' + fmtMoney(missedMatch) + '/yr in free matching money you’re leaving behind — an instant ' + inp.k401.matchRatePct + '% return before markets do anything.' };
+    } else if (topApr > 0) {
+      topMove = { tone: 'crit', title: 'Wipe out your ' + topApr + '% APR debt',
+        body: 'Every extra dollar earns a guaranteed, tax-free ' + topApr + '% by not being owed — better than the ~' + (inp.k401.returnPct || 7) + '% you hope for from investing. It sits right after the match in your plan for exactly this reason.' };
+    } else if (efGap > 1) {
+      topMove = { tone: 'warn', title: 'Finish your emergency fund',
+        body: 'You’re ' + fmtMoney(efGap) + ' short of your ' + fmtMoney(inp.hysa.efTarget) + ' cushion. Topping it up first means the next surprise doesn’t become high-interest debt — then the plan redirects that cash to investing.' };
+    } else if (rate < 15) {
+      var toFifteen = Math.max(0, 0.15 * gross - savedTotal);
+      topMove = { tone: 'warn', title: 'Lift your savings rate to 15%',
+        body: 'You’re at ' + Math.round(rate) + '% of gross. About ' + fmtMoneyFull(toFifteen) + '/mo more gets you to the 15% guideline — and each 1% of salary is only ' + fmtMoneyFull(onePct) + '/mo.' };
+    } else if (inp.hsa.eligible && hsaGap > 50) {
+      topMove = { tone: 'info', title: 'Max your HSA — the best account there is',
+        body: 'You’re putting in ' + fmtMoney(hsaAnnual) + '/yr; the cap is ' + fmtMoney(inp.limits.hsa) + '. Adding ' + fmtMoneyFull(hsaGap / 12) + '/mo maxes it — pre-tax in, tax-free growth, tax-free out for medical, and 401(k)-like after 65.' };
+    } else if (rothGap > 100) {
+      topMove = { tone: 'info', title: 'Fund your Roth IRA to the max',
+        body: 'You’re at ' + fmtMoney(rothAnnual) + '/yr of the ' + fmtMoney(inp.limits.ira) + ' limit. Another ' + fmtMoneyFull(rothGap / 12) + '/mo fills it — decades of completely tax-free growth.' };
+    } else if (cashExcess > 500) {
+      topMove = { tone: 'info', title: 'Put your idle cash to work',
+        body: 'You hold about ' + fmtMoney(cashExcess) + ' in savings beyond your emergency fund. At ' + (inp.hysa.apyPct || 0) + '% it barely keeps up with inflation — invested, it can actually grow.' };
+    } else {
+      topMove = { tone: 'good', done: true, title: 'You’re capturing every major advantage',
+        body: 'Match, debt, emergency fund, savings rate' + (inp.hsa.eligible ? ', HSA' : '') + ', Roth — all in place' + (onTrack ? ', and you’re on track for your goal' : '') + '. Keep it automated and revisit once a year.' };
+    }
+    renderCoachSummary(fundamentals, topMove);
+
+    /* --- detailed insight rows (collected, then shown worst-first) --- */
+    var rows = [];
+    function add(tone, glyph, title, body) { rows.push({ tone: tone, glyph: glyph, title: title, body: body, sev: SEV[tone] }); }
+
+    var srTone = rate >= 15 ? 'good' : rate >= 10 ? 'warn' : 'crit';
+    add(srTone, srTone === 'good' ? '✓' : '!',
       'You’re saving ' + Math.round(rate) + '% of your income',
       fmtMoneyFull(savedTotal) + ' of your ' + fmtMoneyFull(gross) + ' gross monthly pay goes toward your future (employer match and extra debt payments included). The classic guideline is 15–20% of gross. For you, each 1% of salary is ' + fmtMoneyFull(onePct) + '/mo.');
 
-    if (inp.k401.matchRatePct > 0 && inp.k401.matchCapPct > 0) {
-      if (inp.k401.contribPct >= inp.k401.matchCapPct) {
-        var worth = inp.k401.matchRatePct / 100 * inp.k401.matchCapPct / 100 * salary;
-        insightRow(host, 'good', '✓',
-          'Full employer match captured — worth ' + fmtMoney(worth) + '/yr',
-          'Contributing ' + inp.k401.contribPct + '% of pay collects every matched dollar: an instant ' + inp.k401.matchRatePct + '% return on those contributions before the market does anything.');
+    if (hasMatch && matchGap <= 0.01) {
+      var worth = inp.k401.matchRatePct / 100 * inp.k401.matchCapPct / 100 * salary;
+      add('good', '✓', 'Full employer match captured — worth ' + fmtMoney(worth) + '/yr',
+        'Contributing ' + inp.k401.contribPct + '% of pay collects every matched dollar: an instant ' + inp.k401.matchRatePct + '% return on those contributions before the market does anything.');
+    } else if (hasMatch) {
+      add('crit', '!', 'You’re leaving ' + fmtMoney(missedMatch) + '/yr of free money on the table',
+        'Your employer matches up to ' + inp.k401.matchCapPct + '% of pay, but you contribute ' + (inp.k401.contribPct || 0) + '%. Raising it to ' + inp.k401.matchCapPct + '% captures a guaranteed ' + inp.k401.matchRatePct + '% return — step 1 of the recommended order.');
+    }
+
+    if (inp.hysa.efTarget > 0) {
+      if (efGap > 1) {
+        add('warn', '!', 'Emergency fund is ' + fmtMoney(efGap) + ' short of your ' + fmtMoney(inp.hysa.efTarget) + ' goal',
+          'You have ' + fmtMoney(inp.hysa.balance) + ' set aside. Until it reaches your goal, the recommended order steers cash here first — a full cushion is what keeps a surprise from turning into credit-card debt.');
       } else {
-        var missed = inp.k401.matchRatePct / 100 * (inp.k401.matchCapPct - inp.k401.contribPct) / 100 * salary;
-        insightRow(host, 'crit', '!',
-          'You’re leaving ' + fmtMoney(missed) + '/yr of free money on the table',
-          'Your employer matches up to ' + inp.k401.matchCapPct + '% of pay, but you contribute ' + (inp.k401.contribPct || 0) + '%. Raising it to ' + inp.k401.matchCapPct + '% captures a guaranteed ' + inp.k401.matchRatePct + '% return — that’s step 1 of the recommended order for a reason.');
+        add('good', '✓', 'Emergency fund is fully funded',
+          'Your ' + fmtMoney(inp.hysa.balance) + ' meets your ' + fmtMoney(inp.hysa.efTarget) + ' goal, so the plan sends new cash to investing instead of piling up more low-yield savings.');
       }
     }
 
-    /* the compounding lesson: re-run the sim with +1% of salary to the 401(k) */
+    if (cashExcess > 500) {
+      add('info', 'i', fmtMoney(cashExcess) + ' of cash is sitting idle',
+        'That’s savings beyond your emergency fund. At ' + (inp.hysa.apyPct || 0) + '% APY it barely outruns inflation — moving it into your brokerage or Roth puts it to work.');
+    }
+
+    /* the compounding lesson: re-run with +1% of salary to the 401(k) */
     var plus = clone(state);
     plus.k401.contribPct = (parseFloat(plus.k401.contribPct) || 0) + 1;
     var delta = NestEgg.analyze(plus).spendable - a.spendable;
     if (delta > 0) {
-      insightRow(host, 'info', '↑',
-        'One more 1% today ≈ ' + fmtMoney(delta) + ' at ' + retAge,
+      add('info', '↑', 'One more 1% today ≈ ' + fmtMoney(delta) + ' at ' + retAge,
         'Bumping your 401(k) contribution by a single point costs ' + fmtMoneyFull(onePct) + '/mo from your current paycheck, but compounds into roughly ' + fmtMoney(delta) + ' by retirement. Small levers, decades of leverage.');
     }
 
-    var topApr = 0;
-    inp.debts.forEach(function (d) { if (d.aprPct >= inp.limits.highAprPct && d.aprPct > topApr) topApr = d.aprPct; });
     if (topApr > 0) {
-      insightRow(host, 'warn', '!',
-        'Your ' + topApr + '% APR debt outranks the market',
+      add('warn', '!', 'Your ' + topApr + '% APR debt outranks the market',
         'Paying it down is a guaranteed, tax-free ' + topApr + '% return — better than the ~' + (inp.k401.returnPct || 7) + '% you expect from investments. That’s why it sits right after the match in the recommended order.');
+    }
+
+    if (inp.hsa.eligible && hsaGap > 50 && inp.hsa.monthly > 0) {
+      add('info', 'i', 'Your HSA has ' + fmtMoney(hsaGap) + '/yr of room left',
+        'You’re contributing ' + fmtMoney(hsaAnnual) + ' toward the ' + fmtMoney(inp.limits.hsa) + ' cap. The HSA is the only triple-tax-free account, so filling it usually beats extra taxable investing.');
+    }
+
+    if (rothGap > 100 && inp.roth.monthly > 0) {
+      add('info', 'i', 'Your Roth IRA has ' + fmtMoney(rothGap) + '/yr of room left',
+        'You’re funding ' + fmtMoney(rothAnnual) + ' of the ' + fmtMoney(inp.limits.ira) + ' limit. Every dollar you add grows and comes out tax-free — hard to beat while you’re young.');
     }
 
     var sl = inp.debts.filter(function (d) { return d.kind === 'student' && d.balance > 0; });
@@ -542,27 +666,26 @@
         ded = 'Up to $2,500/yr of the interest is likely tax-deductible at your income, which trims its true cost.';
       }
       if (slMax < thr) {
-        insightRow(host, 'info', 'i',
-          'Your student loans can wait their turn — that’s math, not neglect',
+        add('info', 'i', 'Your student loans can wait their turn — that’s math, not neglect',
           'At ' + slMax + '% APR they sit below your ' + thr + '% high-interest line, so the recommended order pays the minimums and invests the difference — expected market returns beat the interest you’d save. ' + ded);
       } else {
-        insightRow(host, 'warn', '!',
-          'Your ' + slMax + '% student loan lands in the high-interest bucket',
+        add('warn', '!', 'Your ' + slMax + '% student loan lands in the high-interest bucket',
           'A rate like that usually means private loans — the avalanche treats them like card debt and attacks them right after the employer match. ' + ded);
       }
     }
 
     if (inp.hsa.eligible && !inp.hsa.monthly) {
-      insightRow(host, 'info', 'i',
-        'Your HSA is sitting idle',
+      add('warn', '!', 'Your HSA is sitting idle',
         'It’s the only triple-tax-advantaged account — pre-tax in, tax-free growth, tax-free out for medical costs, and 401(k)-like after 65. Even $50/mo builds a real health buffer.');
     }
 
     if (salary >= 140000) {
-      insightRow(host, 'info', 'i',
-        'Heads up: Roth IRA income limits',
+      add('info', 'i', 'Heads up: Roth IRA income limits',
         'Around $153K of income (single filers, 2026) the direct Roth IRA door starts to close. The standard workaround is the “backdoor Roth”: contribute to a traditional IRA, then convert.');
     }
+
+    rows.sort(function (x, y) { return x.sev - y.sev; });
+    rows.forEach(function (r) { insightRow(host, r.tone, r.glyph, r.title, r.body); });
 
     /* salary-multiple milestones */
     var wrap = el('milestones-wrap'), ms = el('milestones');
@@ -753,6 +876,76 @@
     allocRow(tbodyRec, '8 · Brokerage (taxable)', s.overflow);
     allocRow(tbodyRec, 'Employer match (unchanged)', rec.match);
     allocRow(tbodyRec, 'Debt minimums (unchanged)', rec.minimums);
+  }
+
+  /* A scannable recap of everything the user entered. */
+  function renderSummary(a) {
+    var grid = el('summary-grid');
+    grid.textContent = '';
+    var inp = a.inputs, p = inp.profile;
+
+    function group(title) {
+      var g = document.createElement('div');
+      g.className = 'sum-group';
+      var h = document.createElement('div');
+      h.className = 'sum-h';
+      h.textContent = title;
+      g.appendChild(h);
+      grid.appendChild(g);
+      return g;
+    }
+    function line(g, label, value, vendorKey) {
+      if (value == null || value === '' ) return;
+      var r = document.createElement('div');
+      r.className = 'sum-line';
+      var l = document.createElement('span');
+      l.className = 'sum-l';
+      if (vendorKey && state.vendors && VENDORS[state.vendors[vendorKey]]) {
+        var v = VENDORS[state.vendors[vendorKey]];
+        var badge = document.createElement('span');
+        badge.className = 'sum-badge';
+        badge.style.background = v.bg;
+        badge.textContent = v.tag;
+        badge.title = v.name;
+        l.appendChild(badge);
+      }
+      l.appendChild(document.createTextNode(label));
+      var val = document.createElement('span');
+      val.className = 'sum-v';
+      val.textContent = value;
+      r.appendChild(l); r.appendChild(val);
+      g.appendChild(r);
+    }
+    var money = function (n) { return fmtMoneyFull(n); };
+    var moOrNone = function (n) { return n > 0 ? money(n) + '/mo' : '—'; };
+
+    var you = group('You');
+    line(you, 'Age', p.currentAge ? p.currentAge + ' → retire at ' + Math.round(p.retirementAge) : null);
+    line(you, 'Income', p.annualIncome ? money(p.annualIncome) + '/yr' : null);
+    if (p.takeHomeMonthly) line(you, 'Take-home', money(p.takeHomeMonthly) + '/mo');
+
+    var acct = group('Accounts');
+    if (inp.k401.balance || inp.k401.contribPct) {
+      line(acct, '401(k)', money(inp.k401.balance) + ' · ' + (inp.k401.contribPct || 0) + '% ' +
+        (inp.k401.type === 'roth' ? 'Roth' : 'pre-tax'), 'k401');
+    }
+    if (inp.roth.balance || inp.roth.monthly) line(acct, 'Roth IRA', money(inp.roth.balance) + ' · ' + moOrNone(inp.roth.monthly), 'roth');
+    if (inp.hsa.eligible || inp.hsa.balance) line(acct, 'HSA', money(inp.hsa.balance) + ' · ' + moOrNone(inp.hsa.monthly), 'hsa');
+    if (inp.hysa.balance || inp.hysa.monthly) line(acct, 'HYSA', money(inp.hysa.balance) + ' · ' + moOrNone(inp.hysa.monthly), 'hysa');
+    if (inp.brokerage.balance || inp.brokerage.monthly) line(acct, 'Brokerage', money(inp.brokerage.balance) + ' · ' + moOrNone(inp.brokerage.monthly), 'brokerage');
+
+    if (inp.debts.length) {
+      var dg = group('Debts');
+      inp.debts.forEach(function (d) {
+        line(dg, d.name || 'Debt', money(d.balance) + ' · ' + (d.aprPct || 0) + '% APR');
+      });
+      if (inp.extraDebtMonthly > 0) line(dg, 'Extra payment', money(inp.extraDebtMonthly) + '/mo');
+    }
+
+    var goal = group('Goal');
+    if (inp.goals.retireSpendMonthly) line(goal, 'Spend in retirement', money(inp.goals.retireSpendMonthly) + '/mo');
+    if (inp.goals.ssMonthly) line(goal, 'Social Security', money(inp.goals.ssMonthly) + '/mo at ' + inp.goals.ssStartAge);
+    line(goal, 'Assumptions', inp.goals.inflationPct + '% infl · ' + inp.goals.swrPct + '% draw · ' + inp.goals.taxRatePct + '% tax');
   }
 
   /* The recommended plan as directives: what to do with this month's money. */
@@ -1059,6 +1252,7 @@
       chartDebt.update(debtPts);
     }
 
+    renderSummary(a);
     renderOrders(a);
     renderInsights(a);
     renderFifty(a);
@@ -1111,6 +1305,8 @@
   el('edit-answers').addEventListener('click', function () { showWizard(0); });
   var emptyEdit = el('empty-edit');
   if (emptyEdit) emptyEdit.addEventListener('click', function () { showWizard(0); });
+  var summaryEdit = el('summary-edit');
+  if (summaryEdit) summaryEdit.addEventListener('click', function () { showWizard(0); });
 
   /* Land returning users (and the #demo sample) on their results; walk first-timers
      through the questions. Both can jump between views any time. */

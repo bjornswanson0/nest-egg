@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
 
@@ -310,11 +310,20 @@
           </div>
         </section>
 
+        <section class="card" id="summary-card">
+          <div class="card-head">
+            <div><h2>Your setup at a glance</h2></div>
+            <span class="hint" style="margin-bottom:0">everything you told us — <button type="button" id="summary-edit" class="linklike">edit →</button></span>
+          </div>
+          <div id="summary-grid" class="summary-grid"></div>
+        </section>
+
         <section class="card" id="insights-card">
           <div class="card-head">
             <h2>Coaching corner</h2>
             <span class="hint" style="margin-bottom:0">personalized to your salary and plan</span>
           </div>
+          <div id="coach-summary"></div>
           <div id="insights"></div>
           <div id="fifty-wrap" hidden>
             <h3 class="ms-title">Your paycheck, 50/30/20 <button type="button" class="help-btn" data-help="fifty" aria-label="What is the 50/30/20 rule?">?</button></h3>
@@ -443,6 +452,6 @@
 
 <script src="js/engine.js?v=4"></script>
 <script src="js/charts.js?v=2"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/app.js?v=11"></script>
 </body>
 </html>
