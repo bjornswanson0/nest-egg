@@ -149,6 +149,31 @@
     location.reload();
   });
 
+  /* ---------- HSA monthly-max guidance (2026 IRS limits) ---------- */
+  function updateHsaHint() {
+    var lim = parseFloat(state.limits.hsa) || 4400;
+    var perMo = lim / 12;
+    var cur = parseFloat(state.hsa.monthly) || 0;
+    var text = 'Maxing it: ≈ $' + Math.round(perMo).toLocaleString('en-US') + '/mo hits your $' +
+      Math.round(lim).toLocaleString('en-US') + ' annual limit. 2026 IRS caps: $4,400 self-only (≈ $367/mo) · ' +
+      '$8,750 family (≈ $729/mo) — set yours under Advanced. +$1,000/yr catch-up from age 55.';
+    if (state.hsa.eligible && cur >= perMo - 0.5) text = '✓ You’re maxing your HSA. ' + text;
+    el('hsa-max-hint').textContent = text;
+  }
+
+  document.getElementById('hsa-max-btn').addEventListener('click', function () {
+    var lim = parseFloat(state.limits.hsa) || 4400;
+    var v = Math.round(lim / 12 * 100) / 100;
+    state.hsa.monthly = v;
+    if (!state.hsa.eligible) {
+      state.hsa.eligible = true;
+      document.querySelector('[data-bind="hsa.eligible"]').checked = true;
+    }
+    document.querySelector('[data-bind="hsa.monthly"]').value = v;
+    save();
+    queueRecalc();
+  });
+
   /* ---------- reset ---------- */
   document.getElementById('reset').addEventListener('click', function () {
     if (!confirm('Clear every number you’ve entered on this device?')) return;
@@ -692,6 +717,7 @@
   }
 
   function recalc() {
+    updateHsaHint(); /* lives in the inputs column — refresh even before ages are set */
     var p = state.profile;
     var ageOk = p.currentAge !== '' && p.retirementAge !== '' &&
       +p.retirementAge > +p.currentAge && +p.currentAge > 0;
