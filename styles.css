@@ -187,7 +187,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
 
 .inputs { display: grid; gap: 14px; }
 
-.results { display: grid; gap: 16px; min-width: 0; }
+.results { display: grid; gap: 20px; min-width: 0; }
 
 /* ---------- cards: warm paper, thin tan frame ---------- */
 
@@ -195,8 +195,12 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
 }
+
+/* result-side widgets get more breathing room than the dense input column */
+.results > .card { padding: 24px 26px; }
+.results > .card.chart-card { padding: 22px 22px 20px; }
 
 .card h2 {
   font-size: 13px;
@@ -222,10 +226,12 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 18px;
 }
-.card-head h2 { margin-bottom: 6px; }
+.card-head h2 { margin-bottom: 0; }
+.card-head + * { margin-top: 0; }
 
-.hint { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
+.hint { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; max-width: 74ch; }
 
 /* ---------- fields ---------- */
 
@@ -359,12 +365,12 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 
 /* ---------- coaching corner ---------- */
 
-#insights { display: grid; gap: 12px; }
+#insights { display: grid; gap: 16px; }
 
 .insight {
   display: grid;
   grid-template-columns: 22px 1fr;
-  gap: 9px;
+  gap: 11px;
   align-items: start;
 }
 .insight-ic {
@@ -383,7 +389,9 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .tone-info .insight-ic { background: color-mix(in srgb, var(--navy) 14%, var(--surface)); color: var(--accent); }
 
 .insight-title { font-weight: 600; font-size: 13.5px; }
-.insight-body { font-size: 13px; color: var(--ink-2); margin-top: 1px; }
+.insight-body { font-size: 13px; color: var(--ink-2); margin-top: 3px; max-width: 72ch; }
+
+#milestones-wrap { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--grid); }
 
 .ms-title {
   font-size: 12px;
@@ -391,10 +399,10 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--head);
-  margin: 18px 0 2px;
+  margin: 0 0 4px;
 }
 
-.milestones { display: flex; gap: 8px; flex-wrap: wrap; }
+.milestones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 
 .ms-chip {
   border: 1px solid var(--hairline);
@@ -426,18 +434,19 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .tile {
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 18px 20px;
   display: grid;
-  gap: 4px;
+  gap: 6px;
   align-content: start;
 }
+.tile-label + .tile-value { margin-top: 2px; }
 
 .tile-label {
   font-size: 11px;
@@ -445,9 +454,10 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
   text-transform: uppercase;
   font-weight: 600;
   color: var(--ink-2);
+  min-height: 2.4em;
 }
-.tile-value { font-size: 25px; font-weight: 600; letter-spacing: -0.01em; color: var(--head); }
-.tile-sub { font-size: 12px; color: var(--muted); }
+.tile-value { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--head); line-height: 1.1; }
+.tile-sub { font-size: 12px; color: var(--muted); line-height: 1.45; }
 
 .delta-up { color: var(--good-text) !important; }
 .delta-down { color: var(--crit) !important; }
@@ -508,7 +518,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .two-up {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-  gap: 16px;
+  gap: 20px;
 }
 
 /* ---------- waterfall / allocation tables ---------- */
@@ -516,7 +526,8 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .waterfall-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 10px 28px;
+  gap: 14px 36px;
+  margin-top: 4px;
 }
 
 .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
