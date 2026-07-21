@@ -56,6 +56,7 @@
       debts: (raw.debts || []).map(function (d) {
         return {
           name: (d && d.name) || 'Debt',
+          kind: (d && d.kind) || 'other',
           balance: g(d, 'balance'),
           aprPct: g(d, 'aprPct'),
           minPayment: g(d, 'minPayment')

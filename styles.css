@@ -712,16 +712,25 @@ details[open] > summary::before { content: '▾'; }
 
 /* ---------- debts ---------- */
 
-#debt-list { display: grid; gap: 8px; margin-bottom: 10px; }
+#debt-list { display: grid; gap: 12px; margin-bottom: 10px; }
 
 .debt-row {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 0.8fr 0.95fr 26px;
+  grid-template-columns: 1.5fr 1.05fr 26px;
   gap: 6px;
   align-items: center;
 }
 .debt-row .affix { padding: 0 6px; }
 .debt-row input { padding: 7px 6px; }
+.debt-kind { font-size: 12.5px; padding: 7px 4px; }
+.debt-amounts {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.1fr 0.85fr 1fr;
+  gap: 6px;
+}
+
+.match-hint { grid-column: 1 / -1; margin: 2px 0 0; }
 
 .debt-remove {
   font: inherit;
@@ -754,7 +763,5 @@ details[open] > summary::before { content: '▾'; }
 @media (max-width: 520px) {
   .kpi-row { grid-template-columns: 1fr; }
   .site-header { padding-top: 22px; }
-  .debt-row { grid-template-columns: 1fr 1fr; position: relative; }
-  .debt-row .debt-name { grid-column: 1 / -1; padding-right: 36px; }
-  .debt-row .debt-remove { position: absolute; top: 5px; right: 2px; }
+  .debt-amounts { grid-template-columns: 1fr 1fr; }
 }

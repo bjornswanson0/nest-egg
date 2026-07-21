@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 
@@ -72,10 +72,11 @@
             <span class="control"><input type="number" data-bind="k401.contribPct" min="0" max="100" step="0.5" inputmode="decimal" placeholder="6"><span class="affix">% of pay</span></span></label>
           <label class="field"><span>Expected return <button type="button" class="help-btn" data-help="returns" aria-label="What is expected return?">?</button></span>
             <span class="control"><input type="number" data-bind="k401.returnPct" min="0" max="20" step="0.5" inputmode="decimal"><span class="affix">%/yr</span></span></label>
-          <label class="field"><span>Employer matches <button type="button" class="help-btn" data-help="match" aria-label="How does an employer match work?">?</button></span>
-            <span class="control"><input type="number" data-bind="k401.matchRatePct" min="0" max="200" step="5" inputmode="decimal" placeholder="50"><span class="affix">%</span></span></label>
-          <label class="field"><span>…of the first</span>
+          <label class="field"><span>Employer match rate <button type="button" class="help-btn" data-help="match" aria-label="How does an employer match work?">?</button></span>
+            <span class="control"><input type="number" data-bind="k401.matchRatePct" min="0" max="200" step="5" inputmode="decimal" placeholder="100"><span class="affix">%</span></span></label>
+          <label class="field"><span>…on your first</span>
             <span class="control"><input type="number" data-bind="k401.matchCapPct" min="0" max="100" step="0.5" inputmode="decimal" placeholder="6"><span class="affix">% of pay</span></span></label>
+          <p class="hint match-hint" id="match-hint"></p>
           <label class="field"><span>Contribution type <button type="button" class="help-btn" data-help="k401type" aria-label="Pre-tax versus Roth 401(k)">?</button></span>
             <select data-bind="k401.type">
               <option value="pretax">Pre-tax (traditional)</option>
@@ -325,7 +326,7 @@
             <li><strong>Social Security</strong> shrinks the nest egg you need: the goal covers spending minus your benefit, plus a bridge (benefit × years) if you retire before it starts. The benefit is assumed to keep pace with inflation.</li>
             <li>Annual contribution limits are indexed to your inflation assumption and include catch-ups: +$8,000 (401(k)) and +$1,100 (IRA) from age 50, +$1,000 (HSA) from 55. Blocked dollars keep working elsewhere.</li>
             <li>When "grow my monthly contributions with raises" is on, flat monthly amounts (Roth, HSA, HYSA, brokerage, extra debt) rise with your income so your savings rate holds steady instead of quietly decaying for decades.</li>
-            <li>Extra debt payments go to the highest-APR balance first (avalanche). When a debt is paid off, its old minimum payment rolls into your plan instead of disappearing. Card minimums are modeled as fixed dollars — real card minimums shrink with the balance, so payoff runs slightly faster here.</li>
+            <li>Extra debt payments go to the highest-APR balance first (avalanche). When a debt is paid off, its old minimum payment rolls into your plan instead of disappearing. Card minimums are modeled as fixed dollars — real card minimums shrink with the balance, so payoff runs slightly faster here. Income-driven student-loan plans aren't modeled — enter your actual monthly payment as the minimum.</li>
             <li>The <em>recommended order</em> re-allocates the same monthly budget: employer match → debt at or above your high-interest threshold → emergency fund → HSA → Roth IRA → 401(k) to the annual max → remaining debt → taxable brokerage. Your plan and the recommended plan always spend identical dollars, so the gap between the two lines is pure ordering.</li>
             <li>The shaded band runs your exact plan with every investment return 2 points higher and lower — a reminder that the smooth line is the middle of a wide range, not a promise.</li>
             <li>Roth IRA income limits aren't enforced — at high incomes the model assumes you'd use the backdoor. The HSA's payroll FICA advantage isn't counted (it's slightly better than shown).</li>
@@ -346,17 +347,26 @@
 <template id="debt-row-tpl">
   <div class="debt-row">
     <input type="text" class="debt-name" placeholder="Name (e.g. Visa)" maxlength="24" aria-label="Debt name">
-    <span class="control"><span class="affix">$</span>
-      <input type="number" class="debt-balance" min="0" step="100" inputmode="decimal" placeholder="Balance" aria-label="Debt balance"></span>
-    <span class="control"><input type="number" class="debt-apr" min="0" max="99" step="0.1" inputmode="decimal" placeholder="APR" aria-label="Debt APR"><span class="affix">%</span></span>
-    <span class="control"><span class="affix">$</span>
-      <input type="number" class="debt-min" min="0" step="10" inputmode="decimal" placeholder="Min/mo" aria-label="Minimum monthly payment"></span>
+    <select class="debt-kind" aria-label="Debt type">
+      <option value="card">Credit card</option>
+      <option value="student">Student loan</option>
+      <option value="auto">Auto loan</option>
+      <option value="personal">Personal loan</option>
+      <option value="other">Other</option>
+    </select>
     <button type="button" class="debt-remove" aria-label="Remove this debt">×</button>
+    <div class="debt-amounts">
+      <span class="control"><span class="affix">$</span>
+        <input type="number" class="debt-balance" min="0" step="100" inputmode="decimal" placeholder="Balance" aria-label="Debt balance"></span>
+      <span class="control"><input type="number" class="debt-apr" min="0" max="99" step="0.1" inputmode="decimal" placeholder="APR" aria-label="Debt APR"><span class="affix">%</span></span>
+      <span class="control"><span class="affix">$</span>
+        <input type="number" class="debt-min" min="0" step="10" inputmode="decimal" placeholder="Min/mo" aria-label="Minimum monthly payment"></span>
+    </div>
   </div>
 </template>
 
-<script src="js/engine.js?v=3"></script>
+<script src="js/engine.js?v=4"></script>
 <script src="js/charts.js?v=2"></script>
-<script src="js/app.js?v=6"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>

@@ -37,8 +37,9 @@
     hysa: { balance: 8000, apyPct: 3.8, monthly: 200, efTarget: 15000 },
     brokerage: { balance: 15000, monthly: 250, returnPct: 7 },
     debts: [
-      { name: 'Credit card', balance: 6200, aprPct: 23.5, minPayment: 140 },
-      { name: 'Car loan', balance: 9800, aprPct: 6.9, minPayment: 310 }
+      { name: 'Credit card', kind: 'card', balance: 6200, aprPct: 23.5, minPayment: 140 },
+      { name: 'Student loan', kind: 'student', balance: 18000, aprPct: 4.5, minPayment: 190 },
+      { name: 'Car loan', kind: 'auto', balance: 9800, aprPct: 6.9, minPayment: 310 }
     ],
     extraDebtMonthly: 200,
     growContrib: true,
@@ -115,14 +116,17 @@
     state.debts.forEach(function (d, idx) {
       var row = debtTpl.content.firstElementChild.cloneNode(true);
       var name = row.querySelector('.debt-name');
+      var kind = row.querySelector('.debt-kind');
       var bal = row.querySelector('.debt-balance');
       var apr = row.querySelector('.debt-apr');
       var min = row.querySelector('.debt-min');
       name.value = d.name || '';
+      kind.value = d.kind || 'other';
       bal.value = d.balance === '' ? '' : d.balance;
       apr.value = d.aprPct === '' ? '' : d.aprPct;
       min.value = d.minPayment === '' ? '' : d.minPayment;
       name.addEventListener('input', function () { d.name = name.value; save(); queueRecalc(); });
+      kind.addEventListener('change', function () { d.kind = kind.value; save(); queueRecalc(); });
       bal.addEventListener('input', function () { d.balance = bal.value === '' ? '' : parseFloat(bal.value); save(); queueRecalc(); });
       apr.addEventListener('input', function () { d.aprPct = apr.value === '' ? '' : parseFloat(apr.value); save(); queueRecalc(); });
       min.addEventListener('input', function () { d.minPayment = min.value === '' ? '' : parseFloat(min.value); save(); queueRecalc(); });
@@ -135,7 +139,7 @@
   }
 
   document.getElementById('add-debt').addEventListener('click', function () {
-    state.debts.push({ name: '', balance: '', aprPct: '', minPayment: '' });
+    state.debts.push({ name: '', kind: 'card', balance: '', aprPct: '', minPayment: '' });
     save(); renderDebts();
     var rows = debtList.querySelectorAll('.debt-name');
     if (rows.length) rows[rows.length - 1].focus();
@@ -148,6 +152,35 @@
     store.set('ne_state', JSON.stringify(SAMPLE));
     location.reload();
   });
+
+  /* ---------- employer match, in plain English ---------- */
+  function updateMatchHint() {
+    var host = el('match-hint');
+    var rate = parseFloat(state.k401.matchRatePct) || 0;
+    var cap = parseFloat(state.k401.matchCapPct) || 0;
+    var salary = parseFloat(state.profile.annualIncome) || 0;
+    var contrib = parseFloat(state.k401.contribPct) || 0;
+    if (!rate || !cap) {
+      host.textContent = 'Example: “100% on your first 6%” means dollar-for-dollar — contribute 6% of pay and your employer adds the same amount on top.';
+      return;
+    }
+    var perDollar = rate === 100 ? 'dollar-for-dollar'
+      : rate < 100 ? Math.round(rate) + '¢ for every $1 you put in'
+        : '$' + (rate / 100).toFixed(2) + ' for every $1 you put in';
+    var t = 'Your employer adds ' + perDollar + ', on your first ' + cap + '% of pay';
+    if (salary) {
+      var maxYr = rate / 100 * cap / 100 * salary;
+      t += ' — free money worth up to ' + fmtMoneyFull(maxYr) + '/yr for you';
+      if (contrib >= cap) {
+        t += '. ✓ Your ' + contrib + '% contribution collects all of it';
+      } else {
+        var got = rate / 100 * Math.min(contrib, cap) / 100 * salary;
+        t += '. At ' + contrib + '% you collect ' + fmtMoneyFull(got) +
+          ' — raise it to ' + cap + '% for the rest';
+      }
+    }
+    host.textContent = t + '.';
+  }
 
   /* ---------- HSA monthly-max guidance (2026 IRS limits) ---------- */
   function updateHsaHint() {
@@ -241,7 +274,7 @@
     },
     match: {
       title: 'How the match works',
-      body: '“50% of the first 6%” means: put in 6% of your pay and your employer adds another 3% for free. Contribute less than the cap and part of that free money simply never gets paid to you.'
+      body: 'Two numbers: the rate (how much they add per dollar you put in) and the cap (how much of your pay it applies to). “100% on your first 6%” is dollar-for-dollar: contribute 6% and they add the same amount on top. “50%” would mean 50¢ per dollar. Contribute below the cap and part of that free money never gets paid to you.'
     },
     returns: {
       title: 'Expected return',
@@ -269,7 +302,7 @@
     },
     debts: {
       title: 'How debts are handled',
-      body: 'List each balance with its APR (yearly interest rate) and minimum payment. Extra payments go to the highest APR first — the “avalanche” — which mathematically minimizes total interest paid. When a debt dies, its minimum rolls into your plan.'
+      body: 'List each balance with its APR (yearly interest rate) and minimum payment. Extra payments go to the highest APR first — the “avalanche” — which mathematically minimizes total interest. When a debt dies, its minimum rolls into your plan. Student loans: federal ones are usually low-rate (minimums + investing often wins), private ones often aren’t. On an income-driven plan, enter your actual monthly payment as the minimum.'
     },
     extraDebt: {
       title: 'Why pay extra?',
@@ -439,6 +472,29 @@
       insightRow(host, 'warn', '!',
         'Your ' + topApr + '% APR debt outranks the market',
         'Paying it down is a guaranteed, tax-free ' + topApr + '% return — better than the ~' + (inp.k401.returnPct || 7) + '% you expect from investments. That’s why it sits right after the match in the recommended order.');
+    }
+
+    var sl = inp.debts.filter(function (d) { return d.kind === 'student' && d.balance > 0; });
+    if (sl.length) {
+      var slMax = Math.max.apply(null, sl.map(function (d) { return d.aprPct; }));
+      var thr = inp.limits.highAprPct;
+      var ded;
+      if (salary >= 100000) {
+        ded = 'One tax note: at your income the student-loan interest deduction is fully phased out (it fades around $85–100K MAGI for single filers), so there’s no tax discount left on that interest.';
+      } else if (salary >= 85000) {
+        ded = 'You’re inside the deduction phase-out band (~$85–100K single), so only part of the up-to-$2,500/yr interest deduction survives.';
+      } else {
+        ded = 'Up to $2,500/yr of the interest is likely tax-deductible at your income, which trims its true cost.';
+      }
+      if (slMax < thr) {
+        insightRow(host, 'info', 'i',
+          'Your student loans can wait their turn — that’s math, not neglect',
+          'At ' + slMax + '% APR they sit below your ' + thr + '% high-interest line, so the recommended order pays the minimums and invests the difference — expected market returns beat the interest you’d save. ' + ded);
+      } else {
+        insightRow(host, 'warn', '!',
+          'Your ' + slMax + '% student loan lands in the high-interest bucket',
+          'A rate like that usually means private loans — the avalanche treats them like card debt and attacks them right after the employer match. ' + ded);
+      }
     }
 
     if (inp.hsa.eligible && !inp.hsa.monthly) {
@@ -717,7 +773,8 @@
   }
 
   function recalc() {
-    updateHsaHint(); /* lives in the inputs column — refresh even before ages are set */
+    updateHsaHint(); /* input-column hints refresh even before ages are set */
+    updateMatchHint();
     var p = state.profile;
     var ageOk = p.currentAge !== '' && p.retirementAge !== '' &&
       +p.retirementAge > +p.currentAge && +p.currentAge > 0;
