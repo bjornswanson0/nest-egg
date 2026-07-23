@@ -53,6 +53,10 @@
         monthly: g(raw.brokerage, 'monthly'),
         returnPct: g(raw.brokerage, 'returnPct')
       },
+      budget: {
+        essentialsMonthly: g(raw.budget, 'essentialsMonthly'),
+        lifestyleMonthly: g(raw.budget, 'lifestyleMonthly')
+      },
       debts: (raw.debts || []).map(function (d) {
         return {
           name: (d && d.name) || 'Debt',
@@ -83,6 +87,29 @@
 
   function totalDebt(debts) {
     return debts.reduce(function (s, d) { return s + Math.max(0, d.balance); }, 0);
+  }
+
+  /* The monthly budget picture: what take-home frees up (the surplus) versus
+     what the current plan actually deploys. The surplus is only trusted once
+     the user has given both take-home and essentials. */
+  function budgetFacts(inputs) {
+    var p = inputs.profile, b = inputs.budget;
+    var minimums = inputs.debts.reduce(function (s, d) {
+      return s + (d.balance > 0 ? d.minPayment : 0);
+    }, 0);
+    var deployed = p.annualIncome / 12 * inputs.k401.contribPct / 100 +
+      inputs.roth.monthly + (inputs.hsa.eligible ? inputs.hsa.monthly : 0) +
+      inputs.hysa.monthly + inputs.brokerage.monthly + inputs.extraDebtMonthly;
+    var known = p.takeHomeMonthly > 0 && b.essentialsMonthly > 0;
+    var surplus = known ? p.takeHomeMonthly - b.essentialsMonthly - b.lifestyleMonthly - minimums : null;
+    return {
+      known: known,
+      minimums: minimums,
+      deployed: deployed,
+      surplus: surplus,
+      unallocated: known ? Math.max(0, surplus - deployed) : null,
+      overAllocated: known ? Math.max(0, deployed - surplus) : null
+    };
   }
 
   /* IRS-style limits for a given sim year: inflation-indexed, with 50+/55+ catch-ups. */
@@ -179,6 +206,7 @@
       return { name: d.name, balance: d.balance, aprPct: d.aprPct, minPayment: d.minPayment };
     });
     var ytd = { k401: 0, roth: 0, hsa: 0 };
+    var bf = budgetFacts(inputs);
     var freedMinimums = 0;
     var totalInterest = 0;
     var debtFreeMonth = totalDebt(debts) > 0 ? null : 0;
@@ -207,6 +235,13 @@
       var budget = planned401k + monthly.roth +
         (inputs.hsa.eligible ? monthly.hsa : 0) +
         monthly.hysa + monthly.brok + monthly.extra + freedMinimums;
+
+      /* With a known surplus, the recommended order deploys the full budget —
+         including dollars the current plan leaves unallocated. Never less than
+         the current plan's spend, so the comparison can only add money. */
+      if (strategy === 'recommended' && bf.known && bf.surplus > 0) {
+        budget = Math.max(budget, bf.surplus * gf + freedMinimums);
+      }
 
       var hiDebtRemaining = debts.reduce(function (s, d) {
         return s + (d.aprPct >= inputs.limits.highAprPct ? Math.max(0, d.balance) : 0);
@@ -361,6 +396,7 @@
     return {
       inputs: inputs,
       years: years,
+      budget: budgetFacts(inputs),
       current: current,
       recommended: recommended,
       currentLow: currentLow,
@@ -383,6 +419,7 @@
     normalize: normalize,
     simulate: simulate,
     analyze: analyze,
+    budgetFacts: budgetFacts,
     targetAt: targetAt,
     afterTax: afterTax,
     limitsForYear: limitsForYear,

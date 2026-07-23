@@ -19,6 +19,7 @@
     hsa: { eligible: false, balance: '', monthly: '', returnPct: 7 },
     hysa: { balance: '', apyPct: 3.5, monthly: '', efTarget: '' },
     brokerage: { balance: '', monthly: '', returnPct: 7 },
+    budget: { essentialsMonthly: '', lifestyleMonthly: '' },
     debts: [],
     extraDebtMonthly: '',
     growContrib: true,
@@ -31,12 +32,13 @@
 
   /* A fictional example so the page is explorable before you enter anything. */
   var SAMPLE = {
-    profile: { currentAge: 32, retirementAge: 65, annualIncome: 85000, incomeGrowthPct: 3, takeHomeMonthly: 5300 },
+    profile: { currentAge: 32, retirementAge: 65, annualIncome: 85000, incomeGrowthPct: 3, takeHomeMonthly: 5450 },
     k401: { balance: 40000, type: 'pretax', preTaxBalPct: 100, contribPct: 6, matchRatePct: 50, matchCapPct: 6, returnPct: 7 },
     roth: { balance: 12000, monthly: 300, returnPct: 7 },
     hsa: { eligible: true, balance: 5000, monthly: 150, returnPct: 7 },
     hysa: { balance: 8000, apyPct: 3.8, monthly: 200, efTarget: 15000 },
     brokerage: { balance: 15000, monthly: 250, returnPct: 7 },
+    budget: { essentialsMonthly: 2350, lifestyleMonthly: 700 },
     debts: [
       { name: 'Credit card', kind: 'card', balance: 6200, aprPct: 23.5, minPayment: 140 },
       { name: 'Student loan', kind: 'student', balance: 18000, aprPct: 4.5, minPayment: 190 },
@@ -351,6 +353,18 @@
       title: 'High-yield savings',
       body: 'A savings account that pays real interest (good ones are around 4%). It’s for money you can’t afford to risk — your emergency fund, near-term goals. It won’t beat the market, and that’s exactly the point.'
     },
+    takehome: {
+      title: 'Take-home pay',
+      body: 'Your monthly pay after taxes. One catch: if 401(k) or HSA money comes out of your paycheck automatically, add those amounts back in — this tool counts every dollar you save, payroll deductions included, against this number.'
+    },
+    essentials: {
+      title: 'Essentials',
+      body: 'The non-negotiables: housing, utilities, groceries, insurance, transportation, phone. Don’t include debt payments — those are counted automatically from your debts list.'
+    },
+    lifestyle: {
+      title: 'Everything else',
+      body: 'Dining out, travel, subscriptions, hobbies, shopping — spending you could dial up or down. Be honest rather than aspirational; a real number here is what makes the plan trustworthy.'
+    },
     ef: {
       title: 'Emergency fund',
       body: 'Cash for when life happens — job loss, medical bill, the car. A common target is 3–6 months of expenses. The recommended order fills this early because expensive debt is usually what happens to people who don’t have one.'
@@ -390,6 +404,10 @@
     growc: {
       title: 'Growing contributions',
       body: 'When on, your flat monthly contributions (Roth, HSA, HYSA, brokerage, extra debt) rise with your raises, keeping your savings rate steady. When off, $300/mo today is still $300/mo at 60 — which quietly becomes a much smaller share of your income.'
+    },
+    nestegg: {
+      title: 'How “spendable” is computed',
+      body: 'All five accounts added up at retirement, minus the income tax owed on pre-tax 401(k) dollars (yours and the employer match) at your assumed retirement tax rate. Roth and HSA money comes out tax-free.'
     },
     fifty: {
       title: 'The 50/30/20 rule',
@@ -555,6 +573,7 @@
     var rothGap = Math.max(0, inp.limits.ira - rothAnnual);
     var cashExcess = inp.hysa.efTarget > 0 ? Math.max(0, inp.hysa.balance - inp.hysa.efTarget * 1.15) : 0;
     var onTrack = a.coverage != null && a.coverage >= 1;
+    var bf = a.budget;
 
     /* --- fundamentals scorecard (only applicable ones count) --- */
     var fundamentals = [];
@@ -562,6 +581,7 @@
     fundamentals.push({ label: 'No high-interest debt', met: topApr === 0 });
     if (inp.hysa.efTarget > 0) fundamentals.push({ label: 'Emergency fund funded', met: efGap <= 1 });
     fundamentals.push({ label: 'Saving 15%+ of income', met: rate >= 15 });
+    if (bf.known && bf.surplus > 0) fundamentals.push({ label: 'Every budget dollar deployed', met: bf.unallocated <= 25 });
     if (inp.hsa.eligible) fundamentals.push({ label: 'HSA funded', met: inp.hsa.monthly > 0 });
     fundamentals.push({ label: 'Roth IRA funded', met: inp.roth.monthly > 0 });
     if (a.coverage != null) fundamentals.push({ label: 'On track to retire', met: onTrack });
@@ -577,6 +597,9 @@
     } else if (efGap > 1) {
       topMove = { tone: 'warn', title: 'Finish your emergency fund',
         body: 'You’re ' + fmtMoney(efGap) + ' short of your ' + fmtMoney(inp.hysa.efTarget) + ' cushion. Topping it up first means the next surprise doesn’t become high-interest debt — then the plan redirects that cash to investing.' };
+    } else if (bf.known && bf.unallocated > 50) {
+      topMove = { tone: 'warn', title: 'Deploy your idle ' + fmtMoneyFull(bf.unallocated) + '/mo',
+        body: 'Your budget frees up ' + fmtMoneyFull(bf.surplus) + '/mo but your plan only deploys ' + fmtMoneyFull(bf.deployed) + '. The marching orders above already put the whole surplus to work — “Make this my plan” makes it official.' };
     } else if (rate < 15) {
       var toFifteen = Math.max(0, 0.15 * gross - savedTotal);
       topMove = { tone: 'warn', title: 'Lift your savings rate to 15%',
@@ -622,6 +645,16 @@
         add('good', '✓', 'Emergency fund is fully funded',
           'Your ' + fmtMoney(inp.hysa.balance) + ' meets your ' + fmtMoney(inp.hysa.efTarget) + ' goal, so the plan sends new cash to investing instead of piling up more low-yield savings.');
       }
+    }
+
+    if (bf.known && bf.unallocated > 25) {
+      add('warn', '!', fmtMoneyFull(bf.unallocated) + '/mo of your budget is going nowhere',
+        'Take-home minus essentials, everything else, and debt minimums leaves ' + fmtMoneyFull(bf.surplus) + '/mo, but your plan deploys only ' + fmtMoneyFull(bf.deployed) + '. Money without a job tends to drift into spending — the recommended order gives every dollar one.');
+    }
+
+    if (bf.known && bf.overAllocated > 25) {
+      add('warn', '!', 'Your plan commits ' + fmtMoneyFull(bf.overAllocated) + '/mo more than your budget frees up',
+        'Contributions plus extra debt payments total ' + fmtMoneyFull(bf.deployed) + '/mo against a ' + fmtMoneyFull(Math.max(0, bf.surplus)) + '/mo surplus. Either trim a contribution or revisit the budget step so the plan is one you can actually run.');
     }
 
     if (cashExcess > 500) {
@@ -856,6 +889,12 @@
     tbodyCur.textContent = ''; tbodyRec.textContent = '';
     if (!cur || !rec) return;
 
+    var ORDER_TEXT = 'The recommended order follows: employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage.';
+    var extraWf = rec.budget - cur.budget;
+    el('waterfall-note').textContent = extraWf > 1
+      ? 'Two orders — and the recommended one also deploys the ' + fmtMoneyFull(extraWf) + '/mo of budget your plan leaves unallocated. ' + ORDER_TEXT
+      : 'Same monthly budget, two orders. ' + ORDER_TEXT;
+
     allocRow(tbodyCur, '401(k) — you', cur.k401);
     allocRow(tbodyCur, '401(k) — employer match', cur.match);
     allocRow(tbodyCur, 'Roth IRA', cur.roth);
@@ -923,6 +962,9 @@
     line(you, 'Age', p.currentAge ? p.currentAge + ' → retire at ' + Math.round(p.retirementAge) : null);
     line(you, 'Income', p.annualIncome ? money(p.annualIncome) + '/yr' : null);
     if (p.takeHomeMonthly) line(you, 'Take-home', money(p.takeHomeMonthly) + '/mo');
+    if (inp.budget.essentialsMonthly) line(you, 'Essentials', money(inp.budget.essentialsMonthly) + '/mo');
+    if (inp.budget.lifestyleMonthly) line(you, 'Everything else', money(inp.budget.lifestyleMonthly) + '/mo');
+    if (a.budget.known && a.budget.surplus > 0) line(you, 'Free to save', money(a.budget.surplus) + '/mo');
 
     var acct = group('Accounts');
     if (inp.k401.balance || inp.k401.contribPct) {
@@ -972,7 +1014,7 @@
     if (!rec || rec.budget <= 0) {
       var li = document.createElement('li');
       li.className = 'orders-empty';
-      li.textContent = 'Enter your income and what you can save each month, and this becomes a numbered to-do list.';
+      li.textContent = 'Tell us your take-home and essentials in the budget step — or set any contribution — and this becomes a numbered to-do list.';
       list.appendChild(li);
       note.textContent = '';
       adoptBtn.disabled = true;
@@ -992,6 +1034,10 @@
     note.textContent = 'Total: ' + fmtMoneyFull(rec.budget) + '/mo of your money' +
       (rec.match >= 1 ? ' — and your employer adds ' + fmtMoneyFull(rec.match) + '/mo on top' : '') +
       (rec.minimums >= 1 ? '. Debt minimums (' + fmtMoneyFull(rec.minimums) + '/mo) keep getting paid separately.' : '.');
+    var extraBudget = cur ? rec.budget - cur.budget : 0;
+    if (extraBudget > 1) {
+      note.textContent += ' Includes the ' + fmtMoneyFull(extraBudget) + '/mo your budget frees up but your current plan doesn’t use.';
+    }
 
     var matches = cur && ['k401', 'roth', 'hsa', 'hysa', 'brok', 'debtExtra'].every(function (k) {
       return Math.abs(cur[k] - rec[k]) < 1;
@@ -1071,17 +1117,20 @@
     var pct = future / takeHome * 100;
 
     el('fifty-note').textContent = 'Take-home ' + fmtMoneyFull(takeHome) + '/mo' +
-      (estimated ? ' (estimated at 75% of gross — enter yours under “About you” for accuracy)' : '') +
+      (estimated ? ' (estimated at 75% of gross — enter yours in the budget step for accuracy)' : '') +
       ', split the classic way:';
 
     el('fifty-marker').style.left = Math.min(100, Math.max(0, pct)) + '%';
 
+    var bf = a.budget;
     var rows = el('fifty-rows');
     rows.textContent = '';
     var data = [
-      ['fk-needs', 'Needs — housing, groceries, insurance, minimum payments', '50%', takeHome * 0.5],
-      ['fk-wants', 'Wants — the fun column', '30%', takeHome * 0.3],
-      ['fk-future', 'Future you — saving, investing, extra debt payoff', '20%', takeHome * 0.2]
+      ['fk-needs', 'Needs — housing, groceries, insurance, minimum payments', '50%', takeHome * 0.5,
+        bf.known ? a.inputs.budget.essentialsMonthly + bf.minimums : null],
+      ['fk-wants', 'Wants — the fun column', '30%', takeHome * 0.3,
+        bf.known ? a.inputs.budget.lifestyleMonthly : null],
+      ['fk-future', 'Future you — saving, investing, extra debt payoff', '20%', takeHome * 0.2, null]
     ];
     data.forEach(function (r) {
       var div = document.createElement('div');
@@ -1092,7 +1141,8 @@
       amt.className = 'amt';
       amt.textContent = fmtMoneyFull(r[3]);
       var lab = document.createElement('span');
-      lab.textContent = r[2] + ' · ' + r[1];
+      lab.textContent = r[2] + ' · ' + r[1] +
+        (r[4] != null ? ' — you: ' + fmtMoneyFull(r[4]) : '');
       div.appendChild(key); div.appendChild(amt); div.appendChild(lab);
       rows.appendChild(div);
     });
@@ -1135,9 +1185,59 @@
     }
   }
 
+  /* ---------- budget step: live surplus math ---------- */
+  function budgetFacts() {
+    return NestEgg.budgetFacts(NestEgg.normalize(state));
+  }
+
+  function updateBudgetSnap() {
+    var bf = budgetFacts();
+    var th = parseFloat(state.profile.takeHomeMonthly) || 0;
+    var ess = parseFloat(state.budget.essentialsMonthly) || 0;
+    var life = parseFloat(state.budget.lifestyleMonthly) || 0;
+    el('bs-takehome').textContent = th ? fmtMoneyFull(th) : '—';
+    el('bs-ess').textContent = ess ? fmtMoneyFull(ess) : '—';
+    el('bs-life').textContent = life ? fmtMoneyFull(life) : '—';
+    el('bs-min-row').hidden = bf.minimums <= 0;
+    el('bs-min').textContent = fmtMoneyFull(bf.minimums);
+    var totalRow = el('bs-total-row'), total = el('bs-total'), note = el('bs-note');
+    if (!bf.known) {
+      total.textContent = '—';
+      totalRow.className = 'bs-row bs-total';
+      note.textContent = 'Fill in take-home and essentials to see your monthly surplus.';
+      return;
+    }
+    total.textContent = fmtMoneyFull(bf.surplus) + '/mo';
+    totalRow.className = 'bs-row bs-total ' + (bf.surplus > 0 ? 'good' : 'crit');
+    if (bf.surplus <= 0) {
+      note.textContent = 'You’re spending everything you bring home. The walkthrough still works — but the plan will lean on trimming the numbers above.';
+    } else {
+      note.textContent = 'That’s ' + Math.round(bf.surplus / th * 100) + '% of take-home for future you. The 50/30/20 guideline aims for 20%+ — ' + fmtMoneyFull(th * 0.2) + '/mo for you.';
+    }
+  }
+
+  /* The running strip on later wizard steps: allocated vs. surplus. */
+  function updateBudgetBar() {
+    var bar = el('wiz-budget');
+    var bf = budgetFacts();
+    var show = bf.known && bf.surplus > 0 &&
+      curStep > stepEls.indexOf(el('step-budget'));
+    if (!show) { bar.hidden = true; return; }
+    bar.hidden = false;
+    var left = bf.surplus - bf.deployed;
+    el('wb-fill').style.width = Math.min(100, bf.deployed / bf.surplus * 100) + '%';
+    bar.className = 'wiz-budget' + (left < -0.5 ? ' over' : left < 1 ? ' full' : '');
+    el('wb-label').textContent = 'Saving & investing ' + fmtMoneyFull(bf.deployed) +
+      ' of your ' + fmtMoneyFull(bf.surplus) + '/mo surplus';
+    el('wb-amt').textContent = left < -0.5 ? fmtMoneyFull(-left) + ' over budget'
+      : left < 1 ? 'fully deployed ✓' : fmtMoneyFull(left) + ' left';
+  }
+
   function recalc() {
     updateHsaHint(); /* input-column hints refresh even before ages are set */
     updateMatchHint();
+    updateBudgetSnap();
+    updateBudgetBar();
     var p = state.profile;
     var ageOk = p.currentAge !== '' && p.retirementAge !== '' &&
       +p.retirementAge > +p.currentAge && +p.currentAge > 0;
@@ -1153,6 +1253,17 @@
 
     /* nest egg tile — spendable (after-tax) is the honest headline */
     el('kpi-nestegg').textContent = fmtMoney(a.spendable);
+    /* the "?" on this tile walks through the actual arithmetic */
+    var preTaxFin = a.current.final.k401Pre;
+    var taxCut = preTaxFin * a.inputs.goals.taxRatePct / 100;
+    HELP.nestegg.body = taxCut >= 1
+      ? 'All five accounts at ' + retAge + ': ' + fmtMoney(a.grossFinal) + ' gross\n' +
+        '− tax on the pre-tax 401(k) slice (' + fmtMoney(preTaxFin) + ' at your ' +
+        a.inputs.goals.taxRatePct + '% rate): −' + fmtMoney(taxCut) + '\n' +
+        '= spendable: ' + fmtMoney(a.spendable) + '\n\n' +
+        'The pre-tax slice includes every employer-match dollar. Roth and HSA money comes out tax-free, and brokerage gains aren’t taxed here (a simplification in your favor). Your tax rate lives in “The finish line” step.'
+      : 'All five accounts at ' + retAge + ' add up to ' + fmtMoney(a.grossFinal) +
+        ' — and none of it takes the retirement tax haircut (no pre-tax 401(k) dollars), so spendable equals gross. Roth and HSA money comes out tax-free, and brokerage gains aren’t taxed here (a simplification in your favor).';
     el('kpi-nestegg-today').textContent =
       '≈ ' + fmtMoney(a.finalTodayDollars) + ' in today’s dollars (' + fmtMoney(a.grossFinal) +
       ' gross) · supports ' + fmtMoney(a.retireIncomeMonthlyToday) + '/mo' +
@@ -1208,7 +1319,11 @@
     } else if (d > 0) {
       boost.textContent = '+' + fmtMoney(d);
       boost.classList.add('delta-up');
-      boostSub.textContent = 'Extra spendable dollars at ' + retAge + ' from reordering the same budget.';
+      var extraB = (a.recommended.firstAlloc && a.current.firstAlloc)
+        ? a.recommended.firstAlloc.budget - a.current.firstAlloc.budget : 0;
+      boostSub.textContent = extraB > 1
+        ? 'At ' + retAge + ', from reordering — and deploying the ' + fmtMoneyFull(extraB) + '/mo your plan leaves idle.'
+        : 'Extra spendable dollars at ' + retAge + ' from reordering the same budget.';
     } else {
       boost.textContent = '−' + fmtMoney(-d);
       boost.classList.add('delta-down');
@@ -1276,6 +1391,8 @@
     el('wiz-fill').style.width = ((curStep + 1) / total * 100) + '%';
     backBtn.disabled = curStep === 0;
     nextBtn.textContent = curStep === total - 1 ? 'See my plan →' : 'Next →';
+    updateBudgetSnap();
+    updateBudgetBar();
     var f = stepEls[curStep].querySelector('input, select');
     if (f && f.focus) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } }
     window.scrollTo(0, 0);

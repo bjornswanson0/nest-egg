@@ -6,11 +6,12 @@
 
 ## What it does
 
-Most retirement calculators project one account and ignore your credit card. Nest Egg simulates your full financial picture month by month to retirement:
+Most retirement calculators project one account and ignore your credit card. Nest Egg starts with your budget and simulates your full financial picture month by month to retirement:
 
+- **Budget first** — take-home minus essentials, everything else, and debt minimums gives your monthly surplus. A running budget bar through the walkthrough shows how much of it you've allocated (and flags over-committing), and the coaching calls out any dollars going nowhere.
 - **All five account types** — 401(k) with employer match, Roth IRA, HSA, HYSA, and a taxable brokerage, each with its own balance, contributions, and expected return.
 - **Debt, done right** — multiple debts with APRs and minimums, paid down avalanche-style (highest APR first). When a debt dies, its old minimum payment rolls forward instead of vanishing.
-- **Two plans, same dollars** — it runs *your* plan against a **recommended order** (employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage) using the identical monthly budget, so the gap between the two lines is pure ordering.
+- **Two plans, one budget** — it runs *your* plan against a **recommended order** (employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage). With no budget entered they spend identical dollars, so the gap is pure ordering; with one, the recommended plan also deploys the surplus your plan leaves idle — and says so.
 - **Retirement readiness, honestly** — the headline nest egg is **after-tax** (pre-tax 401(k) dollars get a haircut at your expected retirement rate), the goal accounts for **Social Security** (including a bridge if you retire before it starts), and a **±2% return band** shows the range around the smooth line.
 - **Real-world mechanics** — contribution limits indexed to inflation with 50+/55+ catch-ups, contributions that optionally grow with raises, coverage percentage, earliest-retirement age, debt-free date, and interest saved.
 - **Built-in coaching** — savings rate vs. the 15–20% guideline, employer-match capture in dollars, the "one more 1%" compounding lesson, salary-multiple benchmarks by age, a **50/30/20 paycheck view**, and a checklist of concrete monthly moves.

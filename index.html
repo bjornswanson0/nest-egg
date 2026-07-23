@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nest Egg — Retirement Calculator</title>
-  <meta name="description" content="A retirement calculator that walks you through the whole picture: 401(k), Roth IRA, HSA, HYSA, brokerage, and debt. Everything stays in your browser.">
+  <meta name="description" content="A retirement calculator that starts with your budget and walks you through the whole picture: 401(k), Roth IRA, HSA, HYSA, brokerage, and debt. Everything stays in your browser.">
   <meta name="theme-color" content="#ece5d8">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg?v=2">
   <script>
@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
 
@@ -42,7 +42,12 @@
   <div id="wizard" aria-label="Set up your plan">
     <div class="wiz-top">
       <div class="wiz-bar"><span class="wiz-bar-fill" id="wiz-fill"></span></div>
-      <p class="wiz-count"><span id="wiz-count">Step 1 of 8</span> · <span id="wiz-section">Getting started</span></p>
+      <p class="wiz-count"><span id="wiz-count">Step 1 of 9</span> · <span id="wiz-section">Getting started</span></p>
+    </div>
+
+    <div id="wiz-budget" class="wiz-budget" hidden>
+      <div class="wb-line"><span id="wb-label"></span><span class="wb-amt" id="wb-amt"></span></div>
+      <div class="wb-bar" aria-hidden="true"><span class="wb-fill" id="wb-fill"></span></div>
     </div>
 
     <div id="wiz-steps">
@@ -62,11 +67,34 @@
               <input type="number" data-bind="profile.annualIncome" min="0" step="1000" inputmode="decimal" placeholder="85,000"></span></label>
           <label class="field"><span>Annual raises</span>
             <span class="control"><input type="number" data-bind="profile.incomeGrowthPct" min="0" max="20" step="0.5" inputmode="decimal" placeholder="3"><span class="affix">%</span></span></label>
-          <label class="field span2"><span>Monthly take-home pay <small>(optional — powers the 50/30/20 view)</small></span>
-            <span class="control"><span class="affix">$</span>
-              <input type="number" data-bind="profile.takeHomeMonthly" min="0" step="100" inputmode="decimal" placeholder="estimated from gross if blank"></span></label>
         </div>
         <p class="step-tip"><button type="button" id="load-sample" class="linklike">Just exploring? Fill everything with example numbers →</button></p>
+      </section>
+
+      <!-- Step 2 — Monthly budget -->
+      <section class="step" id="step-budget" data-section="Your budget">
+        <p class="step-eyebrow">Your budget</p>
+        <h2 class="step-q">What does a normal month look like?</h2>
+        <p class="step-sub">Three rough numbers. Whatever's left is your monthly surplus — and the rest of this walkthrough is about pointing it at the right accounts.</p>
+        <div class="field-grid">
+          <label class="field span2"><span>Monthly take-home pay <button type="button" class="help-btn" data-help="takehome" aria-label="What counts as take-home pay?">?</button></span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="profile.takeHomeMonthly" min="0" step="100" inputmode="decimal" placeholder="5,000"></span></label>
+          <label class="field"><span>Essentials <small>(housing, food, bills)</small> <button type="button" class="help-btn" data-help="essentials" aria-label="What counts as essentials?">?</button></span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="budget.essentialsMonthly" min="0" step="50" inputmode="decimal" placeholder="2,500"></span></label>
+          <label class="field"><span>Everything else <small>(the fun column)</small> <button type="button" class="help-btn" data-help="lifestyle" aria-label="What counts as everything else?">?</button></span>
+            <span class="control"><span class="affix">$</span>
+              <input type="number" data-bind="budget.lifestyleMonthly" min="0" step="50" inputmode="decimal" placeholder="1,000"></span></label>
+        </div>
+        <div class="budget-snap" id="budget-snap" aria-live="polite">
+          <div class="bs-row"><span>Take-home</span><span class="amt" id="bs-takehome">—</span></div>
+          <div class="bs-row"><span>− Essentials</span><span class="amt" id="bs-ess">—</span></div>
+          <div class="bs-row"><span>− Everything else</span><span class="amt" id="bs-life">—</span></div>
+          <div class="bs-row" id="bs-min-row" hidden><span>− Debt minimums <small>(from your debts list)</small></span><span class="amt" id="bs-min">—</span></div>
+          <div class="bs-row bs-total" id="bs-total-row"><span>Free to save &amp; invest</span><span class="amt" id="bs-total">—</span></div>
+          <p class="bs-note" id="bs-note"></p>
+        </div>
       </section>
 
       <!-- Step 2 — 401(k) -->
@@ -275,7 +303,7 @@
 
         <div class="kpi-row">
           <div class="tile">
-            <span class="tile-label">Spendable nest egg (after tax)</span>
+            <span class="tile-label">Spendable nest egg (after tax) <button type="button" class="help-btn" data-help="nestegg" aria-label="How is the spendable nest egg calculated?">?</button></span>
             <span class="tile-value" id="kpi-nestegg">—</span>
             <span class="tile-sub" id="kpi-nestegg-today">—</span>
           </div>
@@ -450,8 +478,8 @@
   </div>
 </template>
 
-<script src="js/engine.js?v=4"></script>
+<script src="js/engine.js?v=5"></script>
 <script src="js/charts.js?v=2"></script>
-<script src="js/app.js?v=11"></script>
+<script src="js/app.js?v=12"></script>
 </body>
 </html>

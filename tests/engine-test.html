@@ -105,6 +105,19 @@
     near(spend(cur8.firstAlloc), spend(rec8.firstAlloc), 0.01),
     spend(cur8.firstAlloc) + ' vs ' + spend(rec8.firstAlloc));
 
+  /* 8a. Known surplus: recommended deploys the full budget, current plan doesn't */
+  var c8a = clone(blank);
+  c8a.profile.annualIncome = 60000;
+  c8a.profile.takeHomeMonthly = 4000;
+  c8a.budget = { essentialsMonthly: 2000, lifestyleMonthly: 500 };
+  c8a.roth.monthly = 300;
+  var cur8a = NestEgg.simulate(NestEgg.normalize(c8a), 'current');
+  var rec8a = NestEgg.simulate(NestEgg.normalize(c8a), 'recommended');
+  t('surplus: current plan still spends its 300', near(spend(cur8a.firstAlloc), 300, 0.01), spend(cur8a.firstAlloc));
+  t('surplus: recommended deploys the full 1500', near(spend(rec8a.firstAlloc), 1500, 0.01), spend(rec8a.firstAlloc));
+  var bf8a = NestEgg.budgetFacts(NestEgg.normalize(c8a));
+  t('budgetFacts: 1200/mo unallocated', near(bf8a.unallocated, 1200, 0.01), bf8a.unallocated);
+
   /* 8b. Overflow past every limit lands in the taxable brokerage */
   var c8b = clone(blank);
   c8b.profile.annualIncome = 60000;
