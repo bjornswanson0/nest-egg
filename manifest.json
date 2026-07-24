@@ -1,0 +1,14 @@
+{
+  "name": "Nest Egg",
+  "short_name": "Nest Egg",
+  "description": "A retirement calculator that starts with your budget and covers 401(k), Roth IRA, HSA, and more.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#223c65",
+  "theme_color": "#ece5d8",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
