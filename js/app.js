@@ -1393,7 +1393,7 @@
     nextBtn.textContent = curStep === total - 1 ? 'See my plan →' : 'Next →';
     updateBudgetSnap();
     updateBudgetBar();
-    var f = stepEls[curStep].querySelector('input, select');
+    var f = stepEls[curStep].querySelector('input:not([type="hidden"])');
     if (f && f.focus) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } }
     window.scrollTo(0, 0);
   }
