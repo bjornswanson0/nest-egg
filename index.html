@@ -364,6 +364,11 @@
             </div>
             <div class="fifty-rows" id="fifty-rows"></div>
           </div>
+          <div id="mg-wrap" hidden>
+            <h3 class="ms-title">What each retirement age takes <button type="button" class="help-btn" data-help="mgrate" aria-label="Where do these percentages come from?">?</button></h3>
+            <p class="hint">The share of gross income to invest, starting from zero today, to replace 80% of your paycheck from that age on. Rebuilt from <a href="https://moneyguy.com/" target="_blank" rel="noopener">Money Guy</a>&rsquo;s &ldquo;How Much Should You Save?&rdquo; table.</p>
+            <div class="milestones" id="mg-strip"></div>
+          </div>
           <div id="milestones-wrap" hidden>
             <h3 class="ms-title">Savings benchmarks for your salary</h3>
             <p class="hint">A common rule of thumb: retirement savings as a multiple of your salary at each age.</p>
@@ -444,6 +449,7 @@
             <li>Extra debt payments go to the highest-APR balance first (avalanche). When a debt is paid off, its old minimum payment rolls into your plan instead of disappearing. Card minimums are modeled as fixed dollars — real card minimums shrink with the balance, so payoff runs slightly faster here. Income-driven student-loan plans aren't modeled — enter your actual monthly payment as the minimum.</li>
             <li>The <em>recommended order</em> re-allocates the same monthly budget: employer match → debt at or above your high-interest threshold → emergency fund → HSA → Roth IRA → 401(k) to the annual max → remaining debt → taxable brokerage. Your plan and the recommended plan always spend identical dollars, so the gap between the two lines is pure ordering.</li>
             <li>The shaded band runs your exact plan with every investment return 2 points higher and lower — a reminder that the smooth line is the middle of a wide range, not a promise.</li>
+            <li>The coaching corner's needed-savings-rate benchmarks rebuild Money Guy's "How Much Should You Save?" methodology, verified against all 89 cells of the published table: invest a flat share of gross pay from zero, at a return of 10% at age 20 that falls 0.1 points per year of age, with 3% raises and 3% inflation, until the nest egg covers 80% of final income at a 4% withdrawal rate.</li>
             <li>Roth IRA income limits aren't enforced — at high incomes the model assumes you'd use the backdoor. The HSA's payroll FICA advantage isn't counted (it's slightly better than shown).</li>
           </ul>
           <p class="disclaimer">This is an educational tool, not financial advice. Numbers are projections built on your assumptions — real markets won't cooperate so smoothly.</p>

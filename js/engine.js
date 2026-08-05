@@ -112,6 +112,25 @@
     };
   }
 
+  /* Money Guy "How Much Should You Save?" benchmark: the share of gross income
+     to invest, starting from zero today, to replace 80% of income from the
+     target age on. Reproduces moneyguy.com's published table exactly: assumed
+     return is 10% at age 20 minus 0.1 points per year of age (floor 5.5%),
+     compounded monthly at r/12 with end-of-month contributions; wages step up
+     3% once a year; target nest egg is 80% of final income at a 4% withdrawal
+     rate. Balances already saved are deliberately not counted. */
+  function neededSavingsRate(currentAge, retireAge) {
+    var A = Math.round(num(currentAge)), T = Math.round(num(retireAge));
+    var months = (T - A) * 12;
+    if (A < 18 || months <= 0) return null;
+    var rm = Math.max(5.5, 10 - 0.1 * (A - 20)) / 100 / 12;
+    var fv = 0;
+    for (var m = 0; m < months; m++) {
+      fv += Math.pow(1.03, Math.floor(m / 12)) / 12 * Math.pow(1 + rm, months - m - 1);
+    }
+    return 0.8 * Math.pow(1.03, months / 12) / 0.04 / fv * 100;
+  }
+
   /* IRS-style limits for a given sim year: inflation-indexed, with 50+/55+ catch-ups. */
   function limitsForYear(inputs, year) {
     var idx = Math.pow(1 + inputs.goals.inflationPct / 100, year);
@@ -420,6 +439,7 @@
     simulate: simulate,
     analyze: analyze,
     budgetFacts: budgetFacts,
+    neededSavingsRate: neededSavingsRate,
     targetAt: targetAt,
     afterTax: afterTax,
     limitsForYear: limitsForYear,

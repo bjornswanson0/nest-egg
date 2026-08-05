@@ -412,6 +412,10 @@
     fifty: {
       title: 'The 50/30/20 rule',
       body: 'A budgeting rule of thumb (popularized by Elizabeth Warren): after tax, put ~50% of your paycheck toward needs (housing, groceries, minimum payments), ~30% toward wants, and ~20% toward your future — savings, investing, and extra debt payoff.'
+    },
+    mgrate: {
+      title: 'Where these percentages come from',
+      body: 'They rebuild Money Guy’s “How Much Should You Save?” table, verified against all 89 published cells: invest that share of gross pay starting from zero, earn 10% a year at age 20 (falling 0.1 points per year of age), get 3% raises with 3% inflation, and retire on 80% of your income at a 4% withdrawal rate. Money you already have invested isn’t counted, so your true number is a little lower than shown. The projection chart is the version built from your real balances and plan.'
     }
   };
 
@@ -550,6 +554,7 @@
       insightRow(host, 'info', 'i', 'Add your salary to unlock coaching',
         'Most of this panel — savings rate, employer-match math, benchmarks — is computed from your income.');
       el('milestones-wrap').hidden = true;
+      el('mg-wrap').hidden = true;
       return;
     }
 
@@ -623,10 +628,21 @@
     var rows = [];
     function add(tone, glyph, title, body) { rows.push({ tone: tone, glyph: glyph, title: title, body: body, sev: SEV[tone] }); }
 
-    var srTone = rate >= 15 ? 'good' : rate >= 10 ? 'warn' : 'crit';
+    var mgNeed = NestEgg.neededSavingsRate(p.currentAge, retAge);
+    var srBase = fmtMoneyFull(savedTotal) + ' of your ' + fmtMoneyFull(gross) + ' gross monthly pay goes toward your future (employer match and extra debt payments included). ';
+    var srTone, srBody;
+    if (mgNeed != null) {
+      srTone = rate >= mgNeed ? 'good' : (rate >= mgNeed * 0.75 || rate >= 15) ? 'warn' : 'crit';
+      srBody = srBase + 'Money Guy’s savings table puts retiring at ' + retAge + ' on 80% of your income at about ' + Math.round(mgNeed) + '% of gross for a ' + Math.round(p.currentAge) + '-year-old starting from zero, so you’re ' +
+        (rate >= mgNeed
+          ? 'clear of that bar. Anything you already have invested is pure headroom.'
+          : 'short of that bar. Each 1% of salary is only ' + fmtMoneyFull(onePct) + '/mo, and savings you already hold shrink the true gap.');
+    } else {
+      srTone = rate >= 15 ? 'good' : rate >= 10 ? 'warn' : 'crit';
+      srBody = srBase + 'The classic guideline is 15–20% of gross. For you, each 1% of salary is ' + fmtMoneyFull(onePct) + '/mo.';
+    }
     add(srTone, srTone === 'good' ? '✓' : '!',
-      'You’re saving ' + Math.round(rate) + '% of your income',
-      fmtMoneyFull(savedTotal) + ' of your ' + fmtMoneyFull(gross) + ' gross monthly pay goes toward your future (employer match and extra debt payments included). The classic guideline is 15–20% of gross. For you, each 1% of salary is ' + fmtMoneyFull(onePct) + '/mo.');
+      'You’re saving ' + Math.round(rate) + '% of your income', srBody);
 
     if (hasMatch && matchGap <= 0.01) {
       var worth = inp.k401.matchRatePct / 100 * inp.k401.matchCapPct / 100 * salary;
@@ -751,6 +767,37 @@
       ms.appendChild(chip);
     });
     wrap.hidden = shown === 0;
+
+    /* Money Guy strip: the savings rate each retirement age demands at your age.
+       Chips are judged against the rate you're actually saving. */
+    var mgWrap = el('mg-wrap'), mgHost = el('mg-strip');
+    mgHost.textContent = '';
+    var mgAges = [45, 50, 55, 60, 65];
+    if (mgAges.indexOf(retAge) === -1) {
+      mgAges.push(retAge);
+      mgAges.sort(function (x, y) { return x - y; });
+    }
+    var mgShown = 0;
+    mgAges.forEach(function (T) {
+      var need = NestEgg.neededSavingsRate(p.currentAge, T);
+      if (need == null) return;
+      var isGoal = T === retAge;
+      if (!isGoal && need > 100) return; /* the source table blanks unrealistic cells */
+      mgShown++;
+      var tone = rate >= need ? 'good' : rate >= need * 0.75 ? 'warn' : 'crit';
+      var chip = document.createElement('div');
+      chip.className = 'ms-chip';
+      var goal = document.createElement('span');
+      goal.className = 'ms-goal';
+      goal.textContent = 'retire at ' + T + (isGoal ? ' (your goal)' : '');
+      var you = document.createElement('span');
+      you.className = 'ms-you ' + tone;
+      you.textContent = (tone === 'good' ? '✓ ' : tone === 'warn' ? '~ ' : '✗ ') + 'takes ' +
+        (need > 100 ? '100%+' : Math.round(need) + '%') + ' of gross';
+      chip.appendChild(goal); chip.appendChild(you);
+      mgHost.appendChild(chip);
+    });
+    mgWrap.hidden = mgShown === 0;
   }
 
   /* ---------- charts ---------- */

@@ -202,6 +202,34 @@
     a16.current.final.invested < a16.currentHigh.final.invested,
     [a16.currentLow.final.invested, a16.current.final.invested, a16.currentHigh.final.invested].join(' / '));
 
+  /* 17. Money Guy "How Much Should You Save?" — the engine's benchmark must
+        reproduce every non-blank cell of the published table (ages 20-40 by
+        retirement 45-65: the % of gross income to invest, from zero, to
+        replace 80% of income at that age). */
+  var MG_COLS = [45, 50, 55, 60, 65];
+  var MG = {
+    20: [30, 20, 13, 9, 6], 21: [33, 22, 15, 10, 7], 22: [37, 24, 16, 11, 8],
+    23: [41, 27, 18, 12, 9], 24: [45, 29, 20, 14, 10], 25: [50, 32, 22, 15, 11],
+    26: [55, 36, 24, 17, 12], 27: [61, 39, 27, 18, 13], 28: [68, 43, 29, 20, 14],
+    29: [75, 48, 32, 22, 16], 30: [84, 53, 35, 24, 17], 31: [null, 58, 38, 26, 19],
+    32: [null, 64, 42, 29, 20], 33: [null, 71, 46, 32, 22], 34: [null, 79, 51, 35, 24],
+    35: [null, 87, 56, 38, 27], 36: [null, null, 61, 41, 29], 37: [null, null, 68, 45, 32],
+    38: [null, null, 74, 49, 34], 39: [null, null, 82, 54, 37], 40: [null, null, null, 59, 41]
+  };
+  var mgCells = 0, mgBad = [];
+  Object.keys(MG).forEach(function (age) {
+    MG_COLS.forEach(function (retAt, i) {
+      if (MG[age][i] == null) return;
+      mgCells++;
+      var got = Math.round(NestEgg.neededSavingsRate(parseFloat(age), retAt));
+      if (got !== MG[age][i]) mgBad.push(age + '->' + retAt + ': ' + got + ' vs ' + MG[age][i]);
+    });
+  });
+  t('Money Guy table reproduced exactly (' + mgCells + ' cells)', mgCells === 89 && mgBad.length === 0, mgBad.join('; '));
+  t('benchmark is null when retirement is not after current age',
+    NestEgg.neededSavingsRate(30, 30) === null && NestEgg.neededSavingsRate(0, 45) === null,
+    NestEgg.neededSavingsRate(30, 30));
+
   var failed = out.filter(function (l) { return l.indexOf('FAIL') === 0; }).length;
   out.unshift((failed ? 'RESULT: FAIL (' + failed + ')' : 'RESULT: PASS') + ' — ' + out.length + ' checks');
   document.getElementById('out').textContent = out.join('\n');

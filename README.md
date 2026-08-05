@@ -14,7 +14,7 @@ Most retirement calculators project one account and ignore your credit card. Nes
 - **Two plans, one budget** — it runs *your* plan against a **recommended order** (employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage). With no budget entered they spend identical dollars, so the gap is pure ordering; with one, the recommended plan also deploys the surplus your plan leaves idle — and says so.
 - **Retirement readiness, honestly** — the headline nest egg is **after-tax** (pre-tax 401(k) dollars get a haircut at your expected retirement rate), the goal accounts for **Social Security** (including a bridge if you retire before it starts), and a **±2% return band** shows the range around the smooth line.
 - **Real-world mechanics** — contribution limits indexed to inflation with 50+/55+ catch-ups, contributions that optionally grow with raises, coverage percentage, earliest-retirement age, debt-free date, and interest saved.
-- **Built-in coaching** — savings rate vs. the 15–20% guideline, employer-match capture in dollars, the "one more 1%" compounding lesson, salary-multiple benchmarks by age, a **50/30/20 paycheck view**, and a checklist of concrete monthly moves.
+- **Built-in coaching** — savings rate vs. a needed-rate benchmark for your age and retirement goal (rebuilt from Money Guy's "How Much Should You Save?" table and verified against all 89 published cells), employer-match capture in dollars, the "one more 1%" compounding lesson, salary-multiple benchmarks by age, a **50/30/20 paycheck view**, and a checklist of concrete monthly moves.
 
 ## Privacy
 
