@@ -293,12 +293,12 @@
         var r = svg.getBoundingClientRect();
         var px = ev.clientX - r.left;
         var frac = Math.min(1, Math.max(0, (px - mL) / pw));
-        setActive(Math.round(frac * (pts.length - 1)), ev.clientX - r.left);
+        setActive(Math.round(frac * (pts.length - 1)));
       });
       overlay.addEventListener('pointerleave', function () { setActive(-1); });
     }
 
-    function setActive(idx, pointerX) {
+    function setActive(idx) {
       var pts = state.points, hl = state.hoverLayer, g = state.geom;
       state.activeIdx = idx;
       if (!hl || !g || idx < 0 || idx >= pts.length) {

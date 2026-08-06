@@ -97,11 +97,6 @@
 
   document.querySelectorAll('[data-bind]').forEach(function (input) {
     var path = input.getAttribute('data-bind');
-    var v = getPath(path);
-    if (input.type === 'checkbox') input.checked = !!v;
-    else if (input.tagName === 'SELECT') input.value = v || input.value;
-    else input.value = (v === '' || v == null) ? '' : v;
-
     input.addEventListener('input', function () {
       if (input.type === 'checkbox') setPath(path, input.checked);
       else if (input.tagName === 'SELECT') setPath(path, input.value);
@@ -110,6 +105,7 @@
       queueRecalc();
     });
   });
+  syncInputs(); /* initial values; also re-run after adopting the recommended plan */
 
   /* ---------- debts ---------- */
   var debtList = document.getElementById('debt-list');
@@ -206,6 +202,8 @@
 
   /* ---------- sample data ---------- */
   document.getElementById('load-sample').addEventListener('click', function () {
+    if (store.get('ne_state') &&
+      !confirm('Replace the numbers saved on this device with the example data?')) return;
     store.set('ne_state', JSON.stringify(SAMPLE));
     location.reload();
   });
