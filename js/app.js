@@ -1535,12 +1535,14 @@
   function showWizard(step) {
     resultsEl.hidden = true;
     wizardEl.hidden = false;
+    document.body.classList.remove('view-results'); /* full hero on the walkthrough */
     goStep(step == null ? curStep : step);
   }
   function showResults() {
     recalc();
     wizardEl.hidden = true;
     resultsEl.hidden = false;
+    document.body.classList.add('view-results'); /* compact hero on the workspace */
     window.scrollTo(0, 0);
   }
   el('edit-answers').addEventListener('click', function () { showWizard(0); });
