@@ -336,6 +336,15 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
 .results-topbar .ghost-btn { margin-bottom: 0; }
 .topbar-right { display: flex; gap: 8px; flex-wrap: wrap; }
 
+.scenario-pick {
+  width: auto;
+  max-width: 190px;
+  font-size: 12px;
+  color: var(--ink-2);
+  padding: 7px 8px;
+}
+.scenario-pick:disabled { opacity: 0.6; }
+
 /* ---------- cards: warm paper, thin tan frame ---------- */
 
 .card {

@@ -51,23 +51,25 @@
     limits: { k401: 24500, ira: 7500, hsa: 4400, highAprPct: 7 }
   };
 
+  /* Fold a saved snapshot into a fresh DEFAULTS clone so missing or extra keys never break the app. */
+  function mergeSaved(saved) {
+    var merged = clone(DEFAULTS);
+    for (var k in merged) {
+      if (!(k in saved)) continue;
+      if (merged[k] && typeof merged[k] === 'object' && !Array.isArray(merged[k])) {
+        for (var k2 in merged[k]) if (k2 in saved[k]) merged[k][k2] = saved[k][k2];
+      } else {
+        merged[k] = saved[k];
+      }
+    }
+    return merged;
+  }
+
   function load() {
     if (location.hash.indexOf('demo') !== -1) return clone(SAMPLE);
     var raw = store.get('ne_state');
     if (!raw) return clone(DEFAULTS);
-    var merged = clone(DEFAULTS);
-    try {
-      var saved = JSON.parse(raw);
-      for (var k in merged) {
-        if (!(k in saved)) continue;
-        if (merged[k] && typeof merged[k] === 'object' && !Array.isArray(merged[k])) {
-          for (var k2 in merged[k]) if (k2 in saved[k]) merged[k][k2] = saved[k][k2];
-        } else {
-          merged[k] = saved[k];
-        }
-      }
-    } catch (e) { }
-    return merged;
+    try { return mergeSaved(JSON.parse(raw)); } catch (e) { return clone(DEFAULTS); }
   }
 
   var demoMode = location.hash.indexOf('demo') !== -1;
@@ -170,13 +172,13 @@
     other: { name: 'Other', tag: '·', bg: '#8a8478' }
   };
 
+  var vendorSyncers = []; /* re-sync select + badge from state (startup, and after loading a setup) */
   document.querySelectorAll('.vendor-select').forEach(function (sel) {
     var key = sel.getAttribute('data-vendor');
     sel.appendChild(new Option('Provider…', ''));
     Object.keys(VENDORS).forEach(function (k) {
       sel.appendChild(new Option(VENDORS[k].name, k));
     });
-    sel.value = (state.vendors && state.vendors[key]) || '';
     function applyBadge() {
       var b = document.getElementById('vb-' + key);
       var v = VENDORS[sel.value];
@@ -192,8 +194,13 @@
       applyBadge();
       queueRecalc(); /* provider names flow into the marching orders */
     });
-    applyBadge();
+    vendorSyncers.push(function () {
+      sel.value = (state.vendors && state.vendors[key]) || '';
+      applyBadge();
+    });
   });
+  function syncVendors() { vendorSyncers.forEach(function (f) { f(); }); }
+  syncVendors();
 
   function vendorSuffix(key) {
     var v = VENDORS[state.vendors && state.vendors[key]];
@@ -909,6 +916,69 @@
     });
   })();
 
+  /* ---------- saved setups: named local snapshots of the whole configuration ---------- */
+  function loadScenarios() {
+    try { return JSON.parse(store.get('ne_scenarios') || '{}') || {}; } catch (e) { return {}; }
+  }
+
+  function renderScenarioPicker() {
+    var sel = el('scenario-pick');
+    var names = Object.keys(loadScenarios()).sort();
+    var current = sel.value;
+    sel.textContent = '';
+    sel.appendChild(new Option(names.length ? 'Saved setups…' : 'No saved setups', ''));
+    names.forEach(function (n) { sel.appendChild(new Option(n, n)); });
+    if (names.indexOf(current) !== -1) sel.value = current;
+    sel.disabled = !names.length;
+    el('scenario-delete').hidden = !sel.value;
+  }
+
+  el('scenario-save').addEventListener('click', function () {
+    var sel = el('scenario-pick');
+    var scenarios = loadScenarios();
+    var name = (prompt('Name this setup:', sel.value || 'My setup') || '').trim().slice(0, 40);
+    if (!name) return;
+    if (scenarios[name] && !confirm('“' + name + '” already exists. Replace it?')) return;
+    scenarios[name] = clone(state);
+    store.set('ne_scenarios', JSON.stringify(scenarios));
+    renderScenarioPicker();
+    sel.value = name;
+    el('scenario-delete').hidden = false;
+  });
+
+  el('scenario-pick').addEventListener('change', function () {
+    var sel = el('scenario-pick');
+    var name = sel.value;
+    el('scenario-delete').hidden = !name;
+    if (!name) return;
+    var snap = loadScenarios()[name];
+    if (!snap) return;
+    if (!confirm('Load “' + name + '”? Your current inputs will be replaced — save them as a setup first if you want to keep them.')) {
+      sel.value = '';
+      el('scenario-delete').hidden = true;
+      return;
+    }
+    state = mergeSaved(snap);
+    save();
+    syncInputs();
+    renderDebts();
+    syncVendors();
+    recalc();
+  });
+
+  el('scenario-delete').addEventListener('click', function () {
+    var name = el('scenario-pick').value;
+    if (!name) return;
+    if (!confirm('Delete the saved setup “' + name + '”? The numbers on screen stay put.')) return;
+    var scenarios = loadScenarios();
+    delete scenarios[name];
+    store.set('ne_scenarios', JSON.stringify(scenarios));
+    renderScenarioPicker();
+    el('scenario-delete').hidden = true;
+  });
+
+  renderScenarioPicker();
+
   function monthsToDate(m) {
     var d = new Date();
     d.setMonth(d.getMonth() + m);
@@ -1451,6 +1521,15 @@
   nextBtn.addEventListener('click', function () {
     if (curStep === stepEls.length - 1) showResults();
     else goStep(curStep + 1);
+  });
+
+  /* Enter in a text/number field advances the step — the form-like flow people expect. */
+  el('wiz-steps').addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter') return;
+    var t = ev.target;
+    if (!t || t.tagName !== 'INPUT' || t.type === 'checkbox') return;
+    ev.preventDefault();
+    nextBtn.click();
   });
 
   function showWizard(step) {

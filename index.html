@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=14">
+  <link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 
@@ -297,6 +297,9 @@
     <div class="results-topbar">
       <button type="button" id="edit-answers" class="ghost-btn">← Edit my answers</button>
       <div class="topbar-right">
+        <select id="scenario-pick" class="scenario-pick" aria-label="Load a saved setup"></select>
+        <button type="button" id="scenario-save" class="ghost-btn">Save setup</button>
+        <button type="button" id="scenario-delete" class="ghost-btn danger" hidden>Delete</button>
         <button type="button" id="export-data" class="ghost-btn">Download</button>
         <button type="button" id="import-data" class="ghost-btn">Load file</button>
         <input type="file" id="import-file" accept="application/json,.json" hidden>
@@ -497,6 +500,6 @@
 
 <script src="js/engine.js?v=5"></script>
 <script src="js/charts.js?v=3"></script>
-<script src="js/app.js?v=13"></script>
+<script src="js/app.js?v=14"></script>
 </body>
 </html>
