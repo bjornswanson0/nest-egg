@@ -7,9 +7,9 @@
   --surface: #faf7f0;
   --ink: #26251f;
   --ink-2: #57534a;
-  --muted: #8a8478;
+  --muted: #6b665a;
   --grid: #e4ddcc;
-  --axis: #c9c0ac;
+  --axis: #8f8266;
   --hairline: rgba(139, 120, 90, 0.30);
   --navy: #223c65;
   --navy-deep: #182c4e;
@@ -28,7 +28,9 @@
   --good: #0ca30c;
   --warn: #fab219;
   --crit: #d03b3b;
+  --crit-text: #b93131;
   --good-text: #006300;
+  --good-badge: #006300;
   --radius: 6px;
   --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
@@ -39,9 +41,9 @@
   --surface: #181f2b;
   --ink: #f2ecdd;
   --ink-2: #c6bfae;
-  --muted: #8a8478;
+  --muted: #a29b88;
   --grid: #262e3c;
-  --axis: #384152;
+  --axis: #64738f;
   --hairline: rgba(200, 184, 158, 0.18);
   --head: #f2ecdd;
   --rule: #c8b89e;
@@ -54,6 +56,7 @@
   --s3: #d55181;
   --s4: #c98500;
   --s5: #199e70;
+  --crit-text: #e26666;
   --good-text: #0ca30c;
 }
 
@@ -64,9 +67,9 @@
     --surface: #181f2b;
     --ink: #f2ecdd;
     --ink-2: #c6bfae;
-    --muted: #8a8478;
+    --muted: #a29b88;
     --grid: #262e3c;
-    --axis: #384152;
+    --axis: #64738f;
     --hairline: rgba(200, 184, 158, 0.18);
     --head: #f2ecdd;
     --rule: #c8b89e;
@@ -79,6 +82,7 @@
     --s3: #d55181;
     --s4: #c98500;
     --s5: #199e70;
+    --crit-text: #e26666;
     --good-text: #0ca30c;
   }
 }
@@ -312,7 +316,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
 .bs-total { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--grid); font-weight: 600; color: var(--ink); }
 .bs-total .amt { font-size: 18px; }
 .bs-total.good .amt { color: var(--good-text); }
-.bs-total.crit .amt { color: var(--crit); }
+.bs-total.crit .amt { color: var(--crit-text); }
 .bs-note { margin-top: 2px; font-size: 12.5px; color: var(--muted); max-width: 56ch; }
 
 /* ---------- wizard budget bar: surplus vs. allocated, on every later step ---------- */
@@ -348,7 +352,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
 }
 .wiz-budget.full .wb-fill { background: var(--good); }
 .wiz-budget.over .wb-fill { background: var(--crit); }
-.wiz-budget.over .wb-amt { color: var(--crit); }
+.wiz-budget.over .wb-amt { color: var(--crit-text); }
 
 /* ---------- results view shell ---------- */
 
@@ -405,6 +409,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
   margin-bottom: 18px;
 }
 .card-head h2 { margin-bottom: 0; }
+.card-head .hint { margin-bottom: 0; }
 .card-head + * { margin-top: 0; }
 
 .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; max-width: 74ch; }
@@ -436,7 +441,7 @@ input[type="number"], input[type="text"] {
 input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-input::placeholder { color: var(--muted); opacity: 0.7; }
+input::placeholder { color: var(--muted); opacity: 1; }
 input[type="number"]:focus, input[type="text"]:focus {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
@@ -506,7 +511,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 }
 .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
 .ghost-btn.danger { margin-bottom: 0; }
-.ghost-btn.danger:hover { border-color: var(--crit); color: var(--crit); }
+.ghost-btn.danger:hover { border-color: var(--crit); color: var(--crit-text); }
 
 /* navy chip button — the www.website.com motif */
 .sample-btn {
@@ -649,7 +654,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
   font-weight: 700;
   color: #ffffff;
 }
-.coach-dot.on { background: var(--good); }
+.coach-dot.on { background: var(--good-badge); }
 .coach-dot.off { background: transparent; border: 1.5px dashed var(--axis); }
 
 .coach-move {
@@ -739,7 +744,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 }
 .tone-good .insight-ic { background: color-mix(in srgb, var(--good) 15%, var(--surface)); color: var(--good-text); }
 .tone-warn .insight-ic { background: color-mix(in srgb, var(--warn) 20%, var(--surface)); color: var(--ink); }
-.tone-crit .insight-ic { background: color-mix(in srgb, var(--crit) 14%, var(--surface)); color: var(--crit); }
+.tone-crit .insight-ic { background: color-mix(in srgb, var(--crit) 14%, var(--surface)); color: var(--crit-text); }
 .tone-info .insight-ic { background: color-mix(in srgb, var(--navy) 14%, var(--surface)); color: var(--accent); }
 
 .insight-title { font-weight: 600; font-size: 13.5px; }
@@ -794,7 +799,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .fifty-you { margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--grid); }
 .fifty-you .amt { padding-left: 18px; }
 .fifty-you.good .amt { color: var(--good-text); }
-.fifty-you.crit .amt { color: var(--crit); }
+.fifty-you.crit .amt { color: var(--crit-text); }
 
 /* ---------- action checklist ---------- */
 
@@ -828,7 +833,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .ms-you { font-size: 13px; font-weight: 600; }
 .ms-you.good { color: var(--good-text); }
 .ms-you.warn { color: var(--ink); }
-.ms-you.crit { color: var(--crit); }
+.ms-you.crit { color: var(--crit-text); }
 
 /* ---------- results: empty state ---------- */
 
@@ -872,7 +877,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .tile-sub { font-size: 12px; color: var(--muted); line-height: 1.45; }
 
 .delta-up { color: var(--good-text) !important; }
-.delta-down { color: var(--crit) !important; }
+.delta-down { color: var(--crit-text) !important; }
 
 .meter {
   --meter-color: var(--accent);
@@ -1087,7 +1092,7 @@ details[open] > summary::before { content: '▾'; }
   height: 26px;
   border-radius: 4px;
 }
-.debt-remove:hover { color: var(--crit); }
+.debt-remove:hover { color: var(--crit-text); }
 
 /* ---------- responsive ---------- */
 
