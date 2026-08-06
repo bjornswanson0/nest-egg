@@ -353,8 +353,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
   margin: 0 auto 20px;
   padding: 8px 12px;
   background: color-mix(in srgb, var(--surface) 86%, transparent);
-  backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--hairline);
   border-radius: 999px;
   box-shadow: 0 10px 30px rgba(24, 44, 78, 0.12);
@@ -404,12 +404,14 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
 .card-head h2::after { margin-top: 7px; }
 
 .card-head {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 18px;
+  padding-right: 30px; /* clears the pinned collapse chevron */
 }
 .card-head h2 { margin-bottom: 0; }
 .card-head .hint { margin-bottom: 0; }
@@ -914,6 +916,9 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .legend-dash { width: 14px; height: 0; border-top: 2px dashed var(--muted); flex: none; }
 
 .collapse-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
   flex: none;
   width: 24px;
   height: 24px;
@@ -1111,4 +1116,6 @@ details[open] > summary::before { content: '▾'; }
   .kpi-row { grid-template-columns: 1fr; }
   .site-header { padding-top: 40px; }
   .debt-amounts { grid-template-columns: 1fr 1fr; }
+  /* wrapped multi-row toolbar: soften the pill and let it scroll away */
+  .results-topbar { position: static; border-radius: 18px; padding: 8px 10px; }
 }
