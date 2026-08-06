@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="styles.css?v=18">
 </head>
 <body>
 
@@ -47,8 +47,8 @@
   <!-- ================= GUIDED WIZARD ================= -->
   <div id="wizard" aria-label="Set up your plan">
     <div class="wiz-top">
-      <div class="wiz-bar"><span class="wiz-bar-fill" id="wiz-fill"></span></div>
-      <p class="wiz-count"><span id="wiz-count">Step 1 of 9</span> · <span id="wiz-section">Getting started</span></p>
+      <nav class="wiz-rail" id="wiz-rail" aria-label="Walkthrough sections"></nav>
+      <p class="wiz-count"><span id="wiz-count">Step 1 of 9</span></p>
     </div>
 
     <div id="wiz-budget" class="wiz-budget" hidden>
@@ -75,6 +75,10 @@
             <span class="control"><input type="number" data-bind="profile.incomeGrowthPct" min="0" max="20" step="0.5" inputmode="decimal" placeholder="3"><span class="affix">%</span></span></label>
         </div>
         <p class="step-tip"><button type="button" id="load-sample" class="linklike">Just exploring? Fill everything with example numbers →</button></p>
+        <div class="wiz-scenario" id="wiz-scenario-wrap" hidden>
+          <label class="field"><span>Or pick up a saved setup</span>
+            <select id="wiz-scenario-pick" class="scenario-pick"></select></label>
+        </div>
       </section>
 
       <!-- Step 2 — Monthly budget -->
@@ -495,6 +499,6 @@
 
 <script src="js/engine.js?v=5"></script>
 <script src="js/charts.js?v=3"></script>
-<script src="js/app.js?v=15"></script>
+<script src="js/app.js?v=16"></script>
 </body>
 </html>

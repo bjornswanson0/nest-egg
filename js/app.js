@@ -921,16 +921,42 @@
     try { return JSON.parse(store.get('ne_scenarios') || '{}') || {}; } catch (e) { return {}; }
   }
 
-  function renderScenarioPicker() {
-    var sel = el('scenario-pick');
-    var names = Object.keys(loadScenarios()).sort();
+  /* Both pickers (results toolbar and wizard step 1) render from the same list. */
+  function fillPicker(sel, names, emptyLabel) {
     var current = sel.value;
     sel.textContent = '';
-    sel.appendChild(new Option(names.length ? 'Saved setups…' : 'No saved setups', ''));
+    sel.appendChild(new Option(names.length ? 'Saved setups…' : emptyLabel, ''));
     names.forEach(function (n) { sel.appendChild(new Option(n, n)); });
     if (names.indexOf(current) !== -1) sel.value = current;
     sel.disabled = !names.length;
+  }
+
+  function renderScenarioPicker() {
+    var names = Object.keys(loadScenarios()).sort();
+    var sel = el('scenario-pick');
+    fillPicker(sel, names, 'No saved setups');
     el('scenario-delete').hidden = !sel.value;
+    /* the step-1 shortcut only exists for people who have setups to load */
+    var wrap = el('wiz-scenario-wrap');
+    wrap.hidden = !names.length;
+    if (names.length) fillPicker(el('wiz-scenario-pick'), names, 'No saved setups');
+  }
+
+  /* Replace every input with a saved snapshot, confirming first. Returns whether it loaded. */
+  function applyScenario(name, revert) {
+    var snap = loadScenarios()[name];
+    if (!snap) { revert(); return false; }
+    if (!confirm('Load “' + name + '”? Your current inputs will be replaced — save them as a setup first if you want to keep them.')) {
+      revert();
+      return false;
+    }
+    state = mergeSaved(snap);
+    save();
+    syncInputs();
+    renderDebts();
+    syncVendors();
+    recalc();
+    return true;
   }
 
   el('scenario-save').addEventListener('click', function () {
@@ -948,22 +974,23 @@
 
   el('scenario-pick').addEventListener('change', function () {
     var sel = el('scenario-pick');
-    var name = sel.value;
-    el('scenario-delete').hidden = !name;
-    if (!name) return;
-    var snap = loadScenarios()[name];
-    if (!snap) return;
-    if (!confirm('Load “' + name + '”? Your current inputs will be replaced — save them as a setup first if you want to keep them.')) {
+    el('scenario-delete').hidden = !sel.value;
+    if (!sel.value) return;
+    applyScenario(sel.value, function () {
       sel.value = '';
       el('scenario-delete').hidden = true;
-      return;
-    }
-    state = mergeSaved(snap);
-    save();
-    syncInputs();
-    renderDebts();
-    syncVendors();
-    recalc();
+    });
+  });
+
+  /* Step-1 shortcut: pick up where a saved setup left off, then jump to results. */
+  el('wiz-scenario-pick').addEventListener('change', function () {
+    var sel = el('wiz-scenario-pick');
+    if (!sel.value) return;
+    var name = sel.value;
+    if (!applyScenario(name, function () { sel.value = ''; })) return;
+    el('scenario-pick').value = name;
+    el('scenario-delete').hidden = false;
+    if (state.profile.currentAge !== '' && state.profile.retirementAge !== '') showResults();
   });
 
   el('scenario-delete').addEventListener('click', function () {
@@ -1498,12 +1525,46 @@
   var backBtn = el('wiz-back'), nextBtn = el('wiz-next');
   var curStep = 0;
 
+  /* Section rail: one chip per named section, jumping to that section's first step.
+     Doubles as the progress indicator, so there's no separate bar to keep in sync. */
+  var sections = [];
+  stepEls.forEach(function (s, i) {
+    var name = s.getAttribute('data-section') || '';
+    if (!sections.length || sections[sections.length - 1].name !== name) {
+      sections.push({ name: name, first: i });
+    }
+  });
+
+  var railBtns = sections.map(function (sec) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'rail-chip';
+    b.textContent = sec.name;
+    b.addEventListener('click', function () { goStep(sec.first); });
+    el('wiz-rail').appendChild(b);
+    return b;
+  });
+
+  function sectionIndexFor(step) {
+    var idx = 0;
+    for (var i = 0; i < sections.length; i++) if (sections[i].first <= step) idx = i;
+    return idx;
+  }
+
+  function renderRail() {
+    var active = sectionIndexFor(curStep);
+    railBtns.forEach(function (b, i) {
+      b.className = 'rail-chip' + (i < active ? ' done' : i === active ? ' current' : '');
+      if (i === active) b.setAttribute('aria-current', 'step');
+      else b.removeAttribute('aria-current');
+    });
+  }
+
   function renderStep() {
     var total = stepEls.length;
     stepEls.forEach(function (s, i) { s.hidden = i !== curStep; });
     el('wiz-count').textContent = 'Step ' + (curStep + 1) + ' of ' + total;
-    el('wiz-section').textContent = stepEls[curStep].getAttribute('data-section') || '';
-    el('wiz-fill').style.width = ((curStep + 1) / total * 100) + '%';
+    renderRail();
     backBtn.disabled = curStep === 0;
     nextBtn.textContent = curStep === total - 1 ? 'See my plan →' : 'Next →';
     updateBudgetSnap();
