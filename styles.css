@@ -60,36 +60,12 @@
   --good-text: #0ca30c;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
-    color-scheme: dark;
-    --bg: #0e131d;
-    --surface: #181f2b;
-    --ink: #f2ecdd;
-    --ink-2: #c6bfae;
-    --muted: #a29b88;
-    --grid: #262e3c;
-    --axis: #64738f;
-    --hairline: rgba(200, 184, 158, 0.18);
-    --head: #f2ecdd;
-    --rule: #c8b89e;
-    --accent: #c8b89e;
-    --fb1: #4a6da8;
-    --fb2: #c8b89e;
-    --fb3: #0ca30c;
-    --s1: #3987e5;
-    --s2: #008300;
-    --s3: #d55181;
-    --s4: #c98500;
-    --s5: #199e70;
-    --crit-text: #e26666;
-    --good-text: #0ca30c;
-  }
-}
+/* The head script always stamps data-theme (stored choice, else OS preference,
+   tracked live), so dark tokens live in exactly one place: the block above. */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body {
   font-family: var(--sans);
@@ -181,9 +157,6 @@ h1 {
 .theme-toggle:hover { border-color: #f2ecdd; }
 .theme-icon::before { content: '☾'; }
 :root[data-theme="dark"] .theme-icon::before { content: '☀'; }
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) .theme-icon::before { content: '☀'; }
-}
 
 /* ---------- layout ---------- */
 
@@ -222,9 +195,6 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
   transition: width 0.28s ease;
 }
 :root[data-theme="dark"] .wiz-bar-fill { background: var(--sand); }
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) .wiz-bar-fill { background: var(--sand); }
-}
 .wiz-count {
   margin-top: 8px;
   font-size: 12px;
@@ -317,7 +287,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
 .bs-total .amt { font-size: 18px; }
 .bs-total.good .amt { color: var(--good-text); }
 .bs-total.crit .amt { color: var(--crit-text); }
-.bs-note { margin-top: 2px; font-size: 12.5px; color: var(--muted); max-width: 56ch; }
+.bs-note { margin-top: 2px; font-size: 13px; color: var(--muted); max-width: 56ch; }
 
 /* ---------- wizard budget bar: surplus vs. allocated, on every later step ---------- */
 
@@ -347,9 +317,6 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
   transition: width 0.25s ease;
 }
 :root[data-theme="dark"] .wb-fill { background: var(--sand); }
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) .wb-fill { background: var(--sand); }
-}
 .wiz-budget.full .wb-fill { background: var(--good); }
 .wiz-budget.over .wb-fill { background: var(--crit); }
 .wiz-budget.over .wb-amt { color: var(--crit-text); }
@@ -412,7 +379,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 0 20px 48px; }
 .card-head .hint { margin-bottom: 0; }
 .card-head + * { margin-top: 0; }
 
-.hint { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; max-width: 74ch; }
+.hint { color: var(--muted); font-size: 13px; margin-bottom: 12px; max-width: 74ch; }
 
 /* ---------- fields ---------- */
 
@@ -438,7 +405,7 @@ input[type="number"], input[type="text"] {
   width: 100%;
   min-width: 0;
 }
-input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input::placeholder { color: var(--muted); opacity: 1; }
@@ -557,7 +524,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
   border-radius: 6px;
   box-shadow: 0 6px 22px rgba(24, 44, 78, 0.20);
   padding: 10px 13px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--ink-2);
   line-height: 1.5;
 }
@@ -675,7 +642,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
   color: var(--ink-2);
 }
 .coach-move-title { font-size: 15px; font-weight: 700; color: var(--head); margin-top: 4px; }
-.coach-move-body { font-size: 13px; color: var(--ink-2); margin-top: 4px; max-width: 74ch; }
+.coach-move-body { font-size: 13.5px; color: var(--ink-2); margin-top: 4px; max-width: 74ch; }
 
 /* ---------- setup at a glance ---------- */
 
@@ -748,7 +715,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
 .tone-info .insight-ic { background: color-mix(in srgb, var(--navy) 14%, var(--surface)); color: var(--accent); }
 
 .insight-title { font-weight: 600; font-size: 13.5px; }
-.insight-body { font-size: 13px; color: var(--ink-2); margin-top: 3px; max-width: 72ch; }
+.insight-body { font-size: 13.5px; color: var(--ink-2); margin-top: 3px; max-width: 72ch; }
 
 #milestones-wrap { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--grid); }
 
@@ -874,7 +841,7 @@ h2 .help-btn { width: 17px; height: 17px; vertical-align: 1px; letter-spacing: 0
   min-height: 2.4em;
 }
 .tile-value { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; color: var(--head); line-height: 1.1; }
-.tile-sub { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.tile-sub { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
 
 .delta-up { color: var(--good-text) !important; }
 .delta-down { color: var(--crit-text) !important; }

@@ -10,11 +10,20 @@
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="manifest" href="manifest.json">
   <script>
+    /* Resolve the theme up front — stored choice, else OS preference — and stamp
+       data-theme before first paint, so styles.css needs only [data-theme] rules. */
     (function () {
-      try {
-        var t = localStorage.getItem('ne_theme');
-        if (t) document.documentElement.setAttribute('data-theme', t);
-      } catch (e) { }
+      var stored = null;
+      try { stored = localStorage.getItem('ne_theme'); } catch (e) { }
+      var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+      function apply(t) { document.documentElement.setAttribute('data-theme', t); }
+      apply(stored || (mq && mq.matches ? 'dark' : 'light'));
+      if (!stored && mq && mq.addEventListener) {
+        mq.addEventListener('change', function (e) {
+          try { if (localStorage.getItem('ne_theme')) return; } catch (err) { }
+          apply(e.matches ? 'dark' : 'light');
+        });
+      }
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
