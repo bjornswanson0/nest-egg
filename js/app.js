@@ -318,14 +318,21 @@
     reader.onload = function () {
       try {
         var obj = JSON.parse(reader.result);
-        var total = obj.totalBrokerageValue;
-        if (typeof total !== 'number' || isNaN(total)) throw new Error('missing totalBrokerageValue');
+        var brok = obj.brokerageValue;
+        var roth = obj.rothValue;
+        if (typeof brok !== 'number' || isNaN(brok)) throw new Error('missing brokerageValue');
         state.brokerage = state.brokerage || {};
-        state.brokerage.balance = total;
+        state.brokerage.balance = brok;
+        if (typeof roth === 'number' && !isNaN(roth)) {
+          state.roth = state.roth || {};
+          state.roth.balance = roth;
+        }
         save();
         syncInputs();
         recalc();
-        status.textContent = 'Loaded: ' + fmtMoney(total);
+        var msg = 'Brokerage: ' + fmtMoney(brok);
+        if (typeof roth === 'number') msg += ' · Roth: ' + fmtMoney(roth);
+        status.textContent = msg;
       } catch (e) {
         status.textContent = 'Could not read file — run fetch_accounts.py first.';
       }
