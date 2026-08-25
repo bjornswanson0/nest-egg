@@ -309,6 +309,89 @@
     reader.readAsText(f);
   });
 
+  /* ---------- Schwab JSON import ---------- */
+  document.getElementById('schwab-import-file').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    var status = document.getElementById('schwab-import-status');
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var obj = JSON.parse(reader.result);
+        var total = obj.totalBrokerageValue;
+        if (typeof total !== 'number' || isNaN(total)) throw new Error('missing totalBrokerageValue');
+        state.brokerage = state.brokerage || {};
+        state.brokerage.balance = total;
+        save();
+        syncInputs();
+        recalc();
+        status.textContent = 'Loaded: ' + fmtMoney(total);
+      } catch (e) {
+        status.textContent = 'Could not read file — run fetch_accounts.py first.';
+      }
+    };
+    reader.readAsText(f);
+    this.value = '';
+  });
+
+  /* ---------- Merrill CSV import ---------- */
+  document.getElementById('merrill-import-file').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    var status = document.getElementById('merrill-import-status');
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var total = parseMerrillCSV(reader.result);
+        if (!total || total <= 0) throw new Error('no balance found');
+        state.k401 = state.k401 || {};
+        state.k401.balance = total;
+        save();
+        syncInputs();
+        recalc();
+        status.textContent = 'Loaded: ' + fmtMoney(total);
+      } catch (e) {
+        status.textContent = 'Could not parse CSV — export from Benefits OnLine first.';
+      }
+    };
+    reader.readAsText(f);
+    this.value = '';
+  });
+
+  function parseMerrillCSV(text) {
+    var lines = text.split(/\r?\n/);
+    var total = 0;
+    var foundHeader = false;
+    var mktColIdx = -1;
+    for (var i = 0; i < lines.length; i++) {
+      var cols = splitCSVLine(lines[i]);
+      if (!foundHeader) {
+        /* find the header row containing "Market Value" or "Value" */
+        for (var c = 0; c < cols.length; c++) {
+          if (/market.?value|current.?value/i.test(cols[c])) { mktColIdx = c; foundHeader = true; break; }
+        }
+        continue;
+      }
+      if (mktColIdx < 0 || mktColIdx >= cols.length) continue;
+      var raw = cols[mktColIdx].replace(/[$,\s]/g, '');
+      var v = parseFloat(raw);
+      if (isFinite(v) && v > 0) total += v;
+    }
+    return total;
+  }
+
+  function splitCSVLine(line) {
+    var cols = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
+    return cols;
+  }
+
   /* ---------- theme ---------- */
   var themeBtn = document.getElementById('theme-toggle');
   var themeMeta = document.querySelector('meta[name="theme-color"]');
@@ -831,7 +914,7 @@
 
   var chartProjection = NestEggCharts.makeChart(document.getElementById('chart-projection'), {
     mode: 'lines', height: 260, xMeta: chartXMeta,
-    ariaLabel: 'Net worth projection, your plan versus the recommended order, with a band showing returns two points higher or lower. Full values are in the projection table below.',
+    ariaLabel: 'Net worth projection, your plan versus the recommended order, with a shaded band showing the 10th to 90th percentile Monte Carlo range. Full values are in the projection table below.',
     series: [
       { key: 'cur', name: 'Your plan', color: '--s1' },
       { key: 'rec', name: 'Recommended', color: '--s2' }
@@ -841,7 +924,7 @@
       if (p.curLow == null) return;
       var row = document.createElement('div');
       row.className = 'tip-range';
-      row.textContent = '±2% returns: ' + fmtMoney(p.curLow) + ' – ' + fmtMoney(p.curHigh);
+      row.textContent = 'p10–p90: ' + fmtMoney(p.curLow) + ' – ' + fmtMoney(p.curHigh);
       tip.appendChild(row);
     }
   });
@@ -1301,21 +1384,29 @@
     wrap.hidden = false;
   }
 
-  function renderTable(a) {
+  function renderTable(a, mc) {
     var tbody = document.querySelector('#projection-table tbody');
     tbody.textContent = '';
     var cs = a.current.series, rs = a.recommended.series;
-    var lo = a.currentLow.series, hi = a.currentHigh.series;
     for (var i = 11; i < cs.length; i += 12) addRow(i);
     if ((cs.length - 1) % 12 !== 11 && cs.length) addRow(cs.length - 1);
     function addRow(i) {
       var p = cs[i], r = rs[i];
+      /* align MC annual data to monthly table row by age */
+      var mcLow = '—', mcHigh = '—';
+      if (mc) {
+        var yrIdx = Math.round(p.age - a.inputs.profile.currentAge) - 1;
+        if (yrIdx >= 0 && yrIdx < mc.ages.length) {
+          mcLow  = fmtMoneyFull(mc.p10[yrIdx]);
+          mcHigh = fmtMoneyFull(mc.p90[yrIdx]);
+        }
+      }
       var tr = document.createElement('tr');
       var cells = [
         Math.round(p.age),
         fmtMoneyFull(p.k401), fmtMoneyFull(p.roth), fmtMoneyFull(p.hsa), fmtMoneyFull(p.hysa),
         fmtMoneyFull(p.brok), fmtMoneyFull(p.debt), fmtMoneyFull(p.netWorth), fmtMoneyFull(r.netWorth),
-        fmtMoneyFull(lo[i].netWorth), fmtMoneyFull(hi[i].netWorth)
+        mcLow, mcHigh
       ];
       cells.forEach(function (c, j) {
         var td = document.createElement(j === 0 ? 'th' : 'td');
@@ -1391,6 +1482,7 @@
     var a = NestEgg.analyze(state);
     lastAnalysis = a;
     baseAge = a.inputs.profile.currentAge;
+    var mc = NestEgg.monteCarlo(a.inputs);
     var retAge = Math.round(a.inputs.profile.retirementAge);
 
     /* nest egg tile — spendable (after-tax) is the honest headline */
@@ -1474,11 +1566,19 @@
 
     /* charts */
     var cs = a.current.series, rsr = a.recommended.series;
-    var lo = a.currentLow.series, hi = a.currentHigh.series;
     var proj = cs.map(function (pt, i) {
+      /* align MC annual points (by age) to monthly series */
+      var mcLow = null, mcHigh = null;
+      if (mc) {
+        var yrIdx = Math.round(pt.age - a.inputs.profile.currentAge) - 1;
+        if (yrIdx >= 0 && yrIdx < mc.ages.length) {
+          mcLow  = mc.p10[yrIdx];
+          mcHigh = mc.p90[yrIdx];
+        }
+      }
       return {
         age: pt.age, cur: pt.netWorth, rec: rsr[i].netWorth,
-        curLow: lo[i].netWorth, curHigh: hi[i].netWorth
+        curLow: mcLow, curHigh: mcHigh
       };
     });
     var goal = a.target > 0 ? { value: a.target, label: 'Goal ' + fmtMoney(a.target) } : null;
@@ -1487,7 +1587,7 @@
     var projLegend = [
       { name: 'Your plan', color: '--s1' },
       { name: 'Recommended', color: '--s2' },
-      { name: '±2% range', color: '--s1', kind: 'band' }
+      { name: mc ? 'p10–p90 range' : '±2% range', color: '--s1', kind: 'band' }
     ];
     if (goal) projLegend.push({ name: 'Goal', color: '--muted', kind: 'dash' });
     makeLegend(el('legend-projection'), projLegend);
@@ -1515,7 +1615,7 @@
     renderFifty(a);
     renderAllocTables(a);
     renderChecklist(a);
-    renderTable(a);
+    renderTable(a, mc);
   }
 
   /* ---------- guided wizard (TurboTax-style walkthrough) ---------- */

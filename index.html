@@ -116,6 +116,12 @@
           <span class="vendor-badge" id="vb-k401" hidden aria-hidden="true"></span>
           <select class="vendor-select" data-vendor="k401" aria-label="Who holds your 401(k)?"></select>
         </div>
+        <div class="import-row">
+          <span class="import-label">Pull balance from a Merrill export</span>
+          <label class="ghost-btn mini import-trigger" for="merrill-import-file">Load CSV →</label>
+          <input type="file" id="merrill-import-file" accept=".csv,text/csv" hidden>
+          <span class="import-status" id="merrill-import-status"></span>
+        </div>
         <div class="field-grid">
           <label class="field span2"><span>Current balance</span>
             <span class="control"><span class="affix">$</span>
@@ -216,6 +222,12 @@
         <div class="vendor-row">
           <span class="vendor-badge" id="vb-brokerage" hidden aria-hidden="true"></span>
           <select class="vendor-select" data-vendor="brokerage" aria-label="Who holds your brokerage account?"></select>
+        </div>
+        <div class="import-row">
+          <span class="import-label">Pull live balance from Schwab</span>
+          <label class="ghost-btn mini import-trigger" for="schwab-import-file">Load export →</label>
+          <input type="file" id="schwab-import-file" accept=".json,application/json" hidden>
+          <span class="import-status" id="schwab-import-status"></span>
         </div>
         <div class="field-grid">
           <label class="field"><span>Current balance</span>
@@ -394,7 +406,7 @@
             </div>
             <div class="legend" id="legend-projection"></div>
           </div>
-          <p class="hint">Everything you own minus everything you owe, month by month, in gross (pre-tax) dollars — the tiles above show the after-tax view. The shaded band is your plan with investment returns 2 points hotter or colder than assumed; the dashed line is your nest-egg goal.</p>
+          <p class="hint">Everything you own minus everything you owe, month by month, in gross (pre-tax) dollars — the tiles above show the after-tax view. The shaded band is the 10th–90th percentile range from 400 Monte Carlo scenarios (historical equity volatility ~15%/yr); the dashed line is your nest-egg goal.</p>
           <div id="chart-projection"></div>
         </section>
 

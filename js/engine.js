@@ -201,8 +201,11 @@
 
   /* Month-by-month accumulation from current age to retirement age.
      The 401(k) is tracked as two buckets: pre-tax (match always lands here,
-     plus employee dollars if type is pretax) and Roth. */
-  function simulate(inputs, strategy) {
+     plus employee dollars if type is pretax) and Roth.
+     opts.ratesPerYear: optional array of {k401,roth,hsa,brok} annual pcts,
+     one entry per year — used by monteCarlo() to inject random returns. */
+  function simulate(inputs, strategy, opts) {
+    var rpy = (opts && opts.ratesPerYear) || null;
     var p = inputs.profile;
     var months = Math.max(0, Math.round((p.retirementAge - p.currentAge) * 12));
     var preShare = Math.min(100, Math.max(0, inputs.k401.preTaxBalPct)) / 100;
@@ -233,7 +236,17 @@
     var series = [];
 
     for (var m = 0; m < months; m++) {
-      if (m % 12 === 0) ytd = { k401: 0, roth: 0, hsa: 0 };
+      if (m % 12 === 0) {
+        ytd = { k401: 0, roth: 0, hsa: 0 };
+        if (rpy) {
+          var yr = Math.floor(m / 12);
+          var yRates = rpy[yr] || rpy[rpy.length - 1];
+          rate.k401 = monthlyRate(yRates.k401);
+          rate.roth = monthlyRate(yRates.roth);
+          rate.hsa  = monthlyRate(yRates.hsa);
+          rate.brok = monthlyRate(yRates.brok);
+        }
+      }
       var year = Math.floor(m / 12);
       var salary = p.annualIncome / 12 * Math.pow(1 + p.incomeGrowthPct / 100, year);
       var limY = limitsForYear(inputs, year);
@@ -434,10 +447,80 @@
     };
   }
 
+  /* Box-Muller normal random number generator. */
+  function randn() {
+    var u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  /* Run N Monte Carlo simulations on the current-plan strategy, varying investment
+     returns each year with a lognormal model (historical equity σ ≈ 15%).
+     Returns annual p10/p50/p90 net-worth arrays aligned to age. */
+  function monteCarlo(inputs, numSims) {
+    numSims = numSims || 400;
+    var p = inputs.profile;
+    var years = Math.max(0, Math.round(p.retirementAge - p.currentAge));
+    if (years <= 0) return null;
+
+    var sigma = 0.15;
+    var equityKeys = ['k401', 'roth', 'hsa', 'brok'];
+    var means = {
+      k401: inputs.k401.returnPct,
+      roth: inputs.roth.returnPct,
+      hsa:  inputs.hsa.returnPct,
+      brok: inputs.brokerage.returnPct
+    };
+
+    /* nwByYear[year] accumulates net-worth values across all sims */
+    var nwByYear = [];
+    for (var y = 0; y < years; y++) nwByYear.push([]);
+
+    for (var s = 0; s < numSims; s++) {
+      /* Build per-year return table for this simulation */
+      var rpy = [];
+      for (var y2 = 0; y2 < years; y2++) {
+        var yr = {};
+        equityKeys.forEach(function (k) {
+          var mu = means[k] / 100;
+          /* lognormal: E[r] = mu, Var = sigma^2 */
+          var muLn = Math.log(1 + mu) - 0.5 * sigma * sigma;
+          yr[k] = (Math.exp(muLn + sigma * randn()) - 1) * 100;
+        });
+        yr.hysa = inputs.hysa.apyPct; /* keep cash rate fixed */
+        rpy.push(yr);
+      }
+
+      var result = simulate(inputs, 'current', { ratesPerYear: rpy });
+      /* Sample net worth at each year-end (month 11, 23, …) */
+      for (var y3 = 0; y3 < years; y3++) {
+        var idx = Math.min((y3 + 1) * 12 - 1, result.series.length - 1);
+        nwByYear[y3].push(idx >= 0 ? result.series[idx].netWorth : 0);
+      }
+    }
+
+    function pct(arr, p2) {
+      var sorted = arr.slice().sort(function (a, b) { return a - b; });
+      var i = Math.max(0, Math.min(sorted.length - 1, Math.floor(p2 / 100 * sorted.length)));
+      return sorted[i];
+    }
+
+    var ages = [], p10 = [], p50 = [], p90 = [];
+    for (var y4 = 0; y4 < years; y4++) {
+      ages.push(p.currentAge + y4 + 1);
+      p10.push(pct(nwByYear[y4], 10));
+      p50.push(pct(nwByYear[y4], 50));
+      p90.push(pct(nwByYear[y4], 90));
+    }
+    return { ages: ages, p10: p10, p50: p50, p90: p90 };
+  }
+
   window.NestEgg = {
     normalize: normalize,
     simulate: simulate,
     analyze: analyze,
+    monteCarlo: monteCarlo,
     budgetFacts: budgetFacts,
     neededSavingsRate: neededSavingsRate,
     targetAt: targetAt,
