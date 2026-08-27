@@ -459,68 +459,197 @@
       return { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '\\': '\\', '(': '(', ')': ')' }[ch];
     });
   }
-  /* Text-showing ops only. Pieces inside one TJ array are joined with no space so
-     kerning can't split "$4,983.33"; separate ops get a space between them. */
-  function contentToText(c) {
-    var out = [], m;
-    var re = /\[((?:\((?:\\.|[^\\()])*\)|[^\]])*)\]\s*TJ|\(((?:\\.|[^\\()])*)\)\s*(?:Tj|'|")/g;
+  /* Many PDFs (Chrome/Skia print pipelines, most payroll portals) draw text as hex glyph IDs
+     from subset fonts, so literal strings alone extract nothing. Each font's embedded
+     ToUnicode CMap maps those IDs back to real characters — parsed here, no libraries. */
+  function hexToUtf16(h) {
+    var out = '';
+    for (var i = 0; i + 4 <= h.length; i += 4) out += String.fromCharCode(parseInt(h.substr(i, 4), 16));
+    return out;
+  }
+  function pad4(n) { var h = n.toString(16); while (h.length < 4) h = '0' + h; return h; }
+  function parseCMap(txt) {
+    var map = {}, codeLen = 2, m;
+    var rc = /beginbfchar([\s\S]*?)endbfchar/g;
+    while ((m = rc.exec(txt))) {
+      var rp = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g, p;
+      while ((p = rp.exec(m[1]))) {
+        codeLen = p[1].length / 2;
+        map[parseInt(p[1], 16)] = hexToUtf16(p[2]);
+      }
+    }
+    var rr = /beginbfrange([\s\S]*?)endbfrange/g;
+    while ((m = rr.exec(txt))) {
+      var rq = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*(?:<([0-9a-fA-F]+)>|\[((?:\s*<[0-9a-fA-F]+>)+)\s*\])/g, q;
+      while ((q = rq.exec(m[1]))) {
+        var lo = parseInt(q[1], 16), hi = parseInt(q[2], 16);
+        codeLen = q[1].length / 2;
+        if (hi < lo || hi - lo > 0xFFFF) continue;
+        if (q[3] != null) {
+          var prefix = q[3].length > 4 ? q[3].slice(0, -4) : '';
+          var base = parseInt(q[3].slice(-4), 16);
+          for (var c = lo; c <= hi; c++) map[c] = hexToUtf16(prefix + pad4(base + (c - lo)));
+        } else {
+          var arr = q[4].match(/<([0-9a-fA-F]+)>/g) || [];
+          for (var k = 0; k < arr.length && lo + k <= hi; k++) map[lo + k] = hexToUtf16(arr[k].replace(/[<>]/g, ''));
+        }
+      }
+    }
+    return { m: map, len: codeLen };
+  }
+  function decodeHex(font, hex) {
+    hex = hex.replace(/[^0-9a-fA-F]/g, '');
+    if (!font) return '';
+    var n = font.len * 2, out = '';
+    for (var i = 0; i + n <= hex.length; i += n) {
+      var g = font.m[parseInt(hex.substr(i, n), 16)];
+      if (g != null) out += g;
+    }
+    return out;
+  }
+  /* Text-showing ops: literal strings, hex strings (decoded via the active font's CMap,
+     tracked through Tf), and TJ arrays whose pieces are joined with no space so kerning
+     can't split "$4,983.33". */
+  function contentToText(c, fonts) {
+    var out = [], cur = null, m;
+    var re = /\/(\w+)\s+[\d.]+\s+Tf|\[((?:<[^>]*>|\((?:\\.|[^\\()])*\)|[^\]])*)\]\s*TJ|\(((?:\\.|[^\\()])*)\)\s*(?:Tj|'|")|<([0-9a-fA-F\s]*)>\s*(?:Tj|'|")/g;
     while ((m = re.exec(c))) {
-      if (m[1] != null) {
-        var buf = '', m2, re2 = /\(((?:\\.|[^\\()])*)\)/g;
-        while ((m2 = re2.exec(m[1]))) buf += decodePdfString(m2[1]);
+      if (m[1] != null) { if (fonts[m[1]]) cur = fonts[m[1]]; continue; }
+      if (m[2] != null) {
+        var buf = '', m2, re2 = /<([0-9a-fA-F\s]*)>|\(((?:\\.|[^\\()])*)\)/g;
+        while ((m2 = re2.exec(m[2]))) buf += m2[1] != null ? decodeHex(cur, m2[1]) : decodePdfString(m2[2]);
         out.push(buf);
+      } else if (m[3] != null) {
+        out.push(decodePdfString(m[3]));
       } else {
-        out.push(decodePdfString(m[2]));
+        out.push(decodeHex(cur, m[4]));
       }
     }
     return out.join(' ');
   }
   function extractPdfText(bytes) {
-    var s = latin1(bytes), tasks = [], pos = 0;
-    while ((pos = s.indexOf('stream', pos)) !== -1) {
-      if (!/>>\s*$/.test(s.slice(Math.max(0, pos - 4), pos))) { pos += 6; continue; }
-      var dict = s.slice(Math.max(0, s.lastIndexOf('obj', pos)), pos);
-      var start = pos + 6;
-      if (s.charCodeAt(start) === 13) start++;
-      if (s.charCodeAt(start) === 10) start++;
-      var end = s.indexOf('endstream', start);
-      if (end === -1) break;
-      var trim = end;
-      while (trim > start && (s.charCodeAt(trim - 1) === 10 || s.charCodeAt(trim - 1) === 13)) trim--;
-      var data = bytes.subarray(start, trim);
-      tasks.push(/FlateDecode/.test(dict)
-        ? inflate(data).catch(function () { return ''; })
-        : Promise.resolve(latin1(data)));
-      pos = end + 9;
+    var s = latin1(bytes);
+
+    /* index every top-level object; honor /Length so binary streams can't confuse the scan */
+    var objs = {};
+    var reObj = /(\d+)\s+\d+\s+obj\b/g, m, guard = -1;
+    while ((m = reObj.exec(s))) {
+      if (m.index <= guard) continue;
+      var at = m.index + m[0].length;
+      var endobj = s.indexOf('endobj', at);
+      var st = s.indexOf('stream', at);
+      var o = { dict: '' };
+      if (st !== -1 && (endobj === -1 || st < endobj) && />>\s*$/.test(s.slice(Math.max(at, st - 4), st))) {
+        o.dict = s.slice(at, st);
+        var ds = st + 6;
+        if (s.charCodeAt(ds) === 13) ds++;
+        if (s.charCodeAt(ds) === 10) ds++;
+        var de = -1;
+        var lm = o.dict.match(/\/Length\s+(\d+)(?!\s+\d+\s+R)/);
+        if (lm && /endstream/.test(s.slice(ds + +lm[1], ds + +lm[1] + 20))) de = ds + +lm[1];
+        if (de === -1) de = s.indexOf('endstream', ds);
+        if (de !== -1) {
+          var tr = de;
+          while (tr > ds && (s.charCodeAt(tr - 1) === 10 || s.charCodeAt(tr - 1) === 13)) tr--;
+          o.dataStart = ds;
+          o.dataEnd = tr;
+          guard = s.indexOf('endstream', de) + 9;
+        }
+      } else {
+        o.dict = endobj === -1 ? '' : s.slice(at, endobj);
+      }
+      objs[+m[1]] = o;
     }
-    return Promise.all(tasks).then(function (chunks) {
-      var text = '';
-      chunks.forEach(function (c) {
-        if (/\)\s*(?:Tj|'|")|\]\s*TJ/.test(c)) text += ' ' + contentToText(c);
+
+    function streamText(num) {
+      var o = objs[num];
+      if (!o || o.dataStart == null) return Promise.resolve('');
+      if (!o.text) {
+        var data = bytes.subarray(o.dataStart, o.dataEnd);
+        o.text = /FlateDecode/.test(o.dict)
+          ? inflate(data).catch(function () { return ''; })
+          : Promise.resolve(latin1(data));
+      }
+      return o.text;
+    }
+
+    /* resource name (/G8 …) → ToUnicode CMap object, via the font objects */
+    var fontToUni = {}, num;
+    for (num in objs) {
+      var d = objs[num].dict;
+      if (/\/Type\s*\/Font\b/.test(d)) {
+        var tu = d.match(/\/ToUnicode\s+(\d+)\s+\d+\s+R/);
+        if (tu) fontToUni[num] = +tu[1];
+      }
+    }
+    var nameToUni = {};
+    for (num in objs) {
+      var fm = objs[num].dict.match(/\/Font\s*<<([^>]*)>>/);
+      if (fm) {
+        var rp = /\/(\w+)\s+(\d+)\s+\d+\s+R/g, r;
+        while ((r = rp.exec(fm[1]))) if (fontToUni[r[2]] != null) nameToUni[r[1]] = fontToUni[r[2]];
+      }
+    }
+
+    /* page content streams, in page order */
+    var contentNums = [];
+    for (num in objs) {
+      var d2 = objs[num].dict;
+      if (!/\/Type\s*\/Page\b/.test(d2)) continue;
+      var ca = d2.match(/\/Contents\s*\[([^\]]*)\]/);
+      if (ca) {
+        var rn = /(\d+)\s+\d+\s+R/g, x;
+        while ((x = rn.exec(ca[1]))) contentNums.push(+x[1]);
+      } else {
+        var c1 = d2.match(/\/Contents\s+(\d+)\s+\d+\s+R/);
+        if (c1) contentNums.push(+c1[1]);
+      }
+    }
+
+    var fontNames = Object.keys(nameToUni);
+    return Promise.all(fontNames.map(function (n) { return streamText(nameToUni[n]); }))
+      .then(function (cmapTexts) {
+        var fonts = {};
+        fontNames.forEach(function (n, i) { if (cmapTexts[i]) fonts[n] = parseCMap(cmapTexts[i]); });
+        return Promise.all(contentNums.map(streamText)).then(function (chunks) {
+          /* one pass over the concatenated page content so the active font survives stream splits */
+          var text = contentToText(chunks.join('\n'), fonts);
+          if (/[A-Za-z]{2}/.test(text)) return text;
+          /* fallback for PDFs whose page tree we couldn't index: any stream with text ops */
+          var all = [];
+          for (var k in objs) all.push(k);
+          return Promise.all(all.map(streamText)).then(function (cs) {
+            var t2 = '';
+            cs.forEach(function (c) {
+              if (/\sBT\s/.test(c) && /\)\s*(?:Tj|'|")|\]\s*TJ|>\s*Tj/.test(c)) t2 += ' ' + contentToText(c, fonts);
+            });
+            return t2;
+          });
+        });
       });
-      return text;
-    });
   }
+  /* Whitespace-blind: some PDFs emit one glyph per text op, so extracted spacing is
+     meaningless ("P a y R a t e"). Strip every space and match on the glued text. */
   function parsePaystubText(text) {
-    var t = text.replace(/\s+/g, ' ');
+    var t = text.replace(/\s+/g, '');
     var found = {};
-    if (/semi[\s-]?monthly|twice a month/i.test(t)) found.freq = '24';
-    else if (/bi[\s-]?weekly|every (?:two|2) weeks/i.test(t)) found.freq = '26';
-    else if (/\bweekly\b/i.test(t)) found.freq = '52';
-    else if (/\bmonthly\b/i.test(t)) found.freq = '12';
+    if (/semi-?monthly|twiceamonth/i.test(t)) found.freq = '24';
+    else if (/bi-?weekly|every(?:two|2)weeks/i.test(t)) found.freq = '26';
+    else if (/weekly/i.test(t)) found.freq = '52';
+    else if (/monthly/i.test(t)) found.freq = '12';
     function amt(re) {
-      var m = t.match(re);
+      var m = t.match(new RegExp(re, 'i'));
       if (!m) return null;
       var v = parseFloat(m[1].replace(/,/g, ''));
       return v > 0 ? v : null;
     }
-    var M = '\\$\\s?([0-9][0-9,]*(?:\\.[0-9]{1,2})?)';
-    var gross = amt(new RegExp('pay\\s*rate:?\\s*' + M, 'i')) ||
-      amt(new RegExp('gross\\s*(?:pay|earnings)[^$]{0,30}' + M, 'i')) ||
-      amt(new RegExp('\\bearnings\\b[^$]{0,30}' + M, 'i'));
-    var net = amt(new RegExp('net\\s*pay[^$]{0,30}' + M, 'i'));
-    var k401 = amt(new RegExp('401\\s*\\(?k\\)?[^$]{0,30}' + M, 'i'));
-    var hsa = amt(new RegExp('\\bhsa\\b[^$]{0,30}' + M, 'i'));
+    var M = '\\$([0-9][0-9,]*(?:\\.[0-9]{1,2})?)';
+    var gross = amt('payrate:?' + M) ||
+      amt('gross(?:pay|earnings)[^$]{0,20}' + M) ||
+      amt('earnings[^$]{0,20}' + M);
+    var net = amt('netpay[^$]{0,20}' + M);
+    var k401 = amt('401\\(?k\\)?[^$]{0,20}' + M);
+    var hsa = amt('hsa[^$]{0,20}' + M);
     if (gross) found.gross = gross;
     if (net) found.net = net;
     if (k401) found.k401 = k401;
