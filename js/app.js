@@ -20,6 +20,7 @@
     hysa: { balance: '', apyPct: 3.5, monthly: '', efTarget: '' },
     brokerage: { balance: '', monthly: '', returnPct: 7 },
     budget: { essentialsMonthly: '', lifestyleMonthly: '' },
+    paystub: { freq: '24', gross: '', net: '', k401: '', hsa: '' },
     debts: [],
     extraDebtMonthly: '',
     growContrib: true,
@@ -39,6 +40,7 @@
     hysa: { balance: 8000, apyPct: 3.8, monthly: 200, efTarget: 15000 },
     brokerage: { balance: 15000, monthly: 250, returnPct: 7 },
     budget: { essentialsMonthly: 2350, lifestyleMonthly: 700 },
+    paystub: { freq: '24', gross: '', net: '', k401: '', hsa: '' },
     debts: [
       { name: 'Credit card', kind: 'card', balance: 6200, aprPct: 23.5, minPayment: 140 },
       { name: 'Student loan', kind: 'student', balance: 18000, aprPct: 4.5, minPayment: 190 },
@@ -387,35 +389,58 @@
     return total;
   }
 
-  /* ---------- paystub converter (per-check numbers → the monthly figures the app wants) ---------- */
-  document.getElementById('ps-apply').addEventListener('click', function () {
-    var checks = parseFloat(document.getElementById('ps-freq').value) || 24;
-    function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
-    var gross = num('ps-gross'), net = num('ps-net'), k401 = num('ps-k401'), hsa = num('ps-hsa');
-    var status = document.getElementById('ps-status');
-    if (!net) { status.textContent = 'Net pay is the one required number.'; return; }
-    var toMonthly = checks / 12;
+  /* ---------- paystub hints (what one paycheck implies — ghost numbers only, never autofilled) ---------- */
+  var psBasePh = {}; /* original placeholders, restored when the paystub is cleared */
+  function updatePaystubHints() {
+    var ps = state.paystub || {};
+    var checks = parseFloat(ps.freq) || 24;
+    var gross = parseFloat(ps.gross) || 0;
+    var net = parseFloat(ps.net) || 0;
+    var k401 = parseFloat(ps.k401) || 0;
+    var hsa = parseFloat(ps.hsa) || 0;
+    function money(v) {
+      return '$' + v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+    }
     /* take-home counts payroll-deducted savings, per its own definition — add them back */
-    state.profile.takeHomeMonthly = Math.round((net + k401 + hsa) * toMonthly);
-    var parts = ['take-home ' + fmtMoneyFull(state.profile.takeHomeMonthly) + '/mo'];
-    if (gross) {
-      state.profile.annualIncome = Math.round(gross * checks);
-      parts.push('income ' + fmtMoneyFull(state.profile.annualIncome) + '/yr');
-      if (k401) {
-        state.k401.contribPct = Math.round(k401 / gross * 1000) / 10;
-        parts.push('401(k) ' + state.k401.contribPct + '% of pay');
+    var perCheck = net + k401 + hsa;
+    var thVal = Math.round(perCheck * checks / 12);
+    var incVal = Math.round(gross * checks);
+    var pctVal = gross ? Math.round(k401 / gross * 1000) / 10 : 0;
+    var hsaVal = Math.round(hsa * checks / 12);
+    var hints = [
+      { bind: 'profile.takeHomeMonthly', on: net > 0, ph: thVal.toLocaleString('en-US'),
+        say: 'take-home ≈ ' + money(thVal) + '/mo',
+        tip: money(net) + ' net' + (k401 ? ' + ' + money(k401) + ' 401(k)' : '') + (hsa ? ' + ' + money(hsa) + ' HSA' : '') +
+          ' = ' + money(perCheck) + '/check × ' + checks + ' checks ÷ 12 ≈ ' + money(thVal) + '/mo' },
+      { bind: 'profile.annualIncome', on: gross > 0, ph: incVal.toLocaleString('en-US'),
+        say: 'income ' + money(incVal) + '/yr',
+        tip: money(gross) + '/check × ' + checks + ' checks = ' + money(incVal) + '/yr' },
+      { bind: 'k401.contribPct', on: gross > 0 && k401 > 0, ph: String(pctVal),
+        say: '401(k) ' + pctVal + '% of pay',
+        tip: money(k401) + ' ÷ ' + money(gross) + ' gross = ' + pctVal + '% of pay' },
+      { bind: 'hsa.monthly', on: hsa > 0, ph: hsaVal.toLocaleString('en-US'),
+        say: 'HSA ≈ ' + money(hsaVal) + '/mo',
+        tip: money(hsa) + '/check × ' + checks + ' checks ÷ 12 ≈ ' + money(hsaVal) + '/mo' }
+    ];
+    var says = [];
+    hints.forEach(function (h) {
+      var input = document.querySelector('[data-bind="' + h.bind + '"]');
+      if (!(h.bind in psBasePh)) psBasePh[h.bind] = input.placeholder;
+      if (h.on) {
+        input.placeholder = h.ph;
+        input.title = 'Your paystub: ' + h.tip;
+        input.classList.add('ps-suggested');
+        says.push(h.say);
+      } else {
+        input.placeholder = psBasePh[h.bind];
+        input.removeAttribute('title');
+        input.classList.remove('ps-suggested');
       }
-    }
-    if (hsa) {
-      state.hsa.eligible = true; /* payroll HSA deductions imply an HSA-eligible plan */
-      state.hsa.monthly = Math.round(hsa * toMonthly);
-      parts.push('HSA ' + fmtMoneyFull(state.hsa.monthly) + '/mo');
-    }
-    save();
-    syncInputs();
-    recalc();
-    status.textContent = 'Set: ' + parts.join(' · ');
-  });
+    });
+    document.getElementById('ps-readout').textContent = says.length
+      ? 'Your paycheck says: ' + says.join(' · ') + '. The matching boxes now show these as ghost numbers — hover one for the math. Nothing is filled in for you.'
+      : '';
+  }
 
   function splitCSVLine(line) {
     var cols = [], cur = '', inQ = false;
@@ -1506,6 +1531,7 @@
   function recalc() {
     updateHsaHint(); /* input-column hints refresh even before ages are set */
     updateMatchHint();
+    updatePaystubHints();
     updateBudgetSnap();
     updateBudgetBar();
     var p = state.profile;
