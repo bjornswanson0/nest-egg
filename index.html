@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
 
@@ -99,7 +99,13 @@
         </div>
         <details class="paystub">
           <summary>Have a paystub? Convert it →</summary>
-          <p class="hint">Copy the numbers off one paycheck and we'll show what they imply as ghost numbers on the matching questions — hover a box for the math. Nothing is filled in for you.</p>
+          <p class="hint">Type the numbers off one paycheck — or hand us the paystub PDF and we'll read it, right here in your browser, never uploaded. Either way, the matching questions get ghost suggestions with the math on hover; your answers are never filled in for you.</p>
+          <div class="import-row">
+            <span class="import-label">Read it for me</span>
+            <label class="ghost-btn mini import-trigger" for="ps-file">Load paystub PDF →</label>
+            <input type="file" id="ps-file" accept=".pdf,application/pdf,.txt,text/plain" hidden>
+            <span class="import-status" id="ps-file-status">or drop the file / paste its text anywhere on this panel</span>
+          </div>
           <div class="field-grid">
             <label class="field"><span>I'm paid</span>
               <select data-bind="paystub.freq">
@@ -537,6 +543,6 @@
 
 <script src="js/engine.js?v=5"></script>
 <script src="js/charts.js?v=3"></script>
-<script src="js/app.js?v=18"></script>
+<script src="js/app.js?v=19"></script>
 </body>
 </html>

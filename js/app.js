@@ -391,6 +391,9 @@
 
   /* ---------- paystub hints (what one paycheck implies — ghost numbers only, never autofilled) ---------- */
   var psBasePh = {}; /* original placeholders, restored when the paystub is cleared */
+  function psMoney(v) {
+    return '$' + v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  }
   function updatePaystubHints() {
     var ps = state.paystub || {};
     var checks = parseFloat(ps.freq) || 24;
@@ -398,9 +401,7 @@
     var net = parseFloat(ps.net) || 0;
     var k401 = parseFloat(ps.k401) || 0;
     var hsa = parseFloat(ps.hsa) || 0;
-    function money(v) {
-      return '$' + v.toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
-    }
+    var money = psMoney;
     /* take-home counts payroll-deducted savings, per its own definition — add them back */
     var perCheck = net + k401 + hsa;
     var thVal = Math.round(perCheck * checks / 12);
@@ -441,6 +442,157 @@
       ? 'Your paycheck says: ' + says.join(' · ') + '. The matching boxes now show these as ghost numbers — hover one for the math. Nothing is filled in for you.'
       : '';
   }
+
+  /* ---------- paystub file reader (parsed locally — the file never leaves the browser) ---------- */
+  function latin1(u8) {
+    var s = '', CHUNK = 0x8000;
+    for (var i = 0; i < u8.length; i += CHUNK) s += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
+    return s;
+  }
+  function inflate(u8) {
+    return new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate')))
+      .arrayBuffer().then(function (b) { return latin1(new Uint8Array(b)); });
+  }
+  function decodePdfString(s) {
+    return s.replace(/\\([nrtbf\\()])|\\([0-7]{1,3})/g, function (m, ch, oct) {
+      if (oct) return String.fromCharCode(parseInt(oct, 8));
+      return { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', '\\': '\\', '(': '(', ')': ')' }[ch];
+    });
+  }
+  /* Text-showing ops only. Pieces inside one TJ array are joined with no space so
+     kerning can't split "$4,983.33"; separate ops get a space between them. */
+  function contentToText(c) {
+    var out = [], m;
+    var re = /\[((?:\((?:\\.|[^\\()])*\)|[^\]])*)\]\s*TJ|\(((?:\\.|[^\\()])*)\)\s*(?:Tj|'|")/g;
+    while ((m = re.exec(c))) {
+      if (m[1] != null) {
+        var buf = '', m2, re2 = /\(((?:\\.|[^\\()])*)\)/g;
+        while ((m2 = re2.exec(m[1]))) buf += decodePdfString(m2[1]);
+        out.push(buf);
+      } else {
+        out.push(decodePdfString(m[2]));
+      }
+    }
+    return out.join(' ');
+  }
+  function extractPdfText(bytes) {
+    var s = latin1(bytes), tasks = [], pos = 0;
+    while ((pos = s.indexOf('stream', pos)) !== -1) {
+      if (!/>>\s*$/.test(s.slice(Math.max(0, pos - 4), pos))) { pos += 6; continue; }
+      var dict = s.slice(Math.max(0, s.lastIndexOf('obj', pos)), pos);
+      var start = pos + 6;
+      if (s.charCodeAt(start) === 13) start++;
+      if (s.charCodeAt(start) === 10) start++;
+      var end = s.indexOf('endstream', start);
+      if (end === -1) break;
+      var trim = end;
+      while (trim > start && (s.charCodeAt(trim - 1) === 10 || s.charCodeAt(trim - 1) === 13)) trim--;
+      var data = bytes.subarray(start, trim);
+      tasks.push(/FlateDecode/.test(dict)
+        ? inflate(data).catch(function () { return ''; })
+        : Promise.resolve(latin1(data)));
+      pos = end + 9;
+    }
+    return Promise.all(tasks).then(function (chunks) {
+      var text = '';
+      chunks.forEach(function (c) {
+        if (/\)\s*(?:Tj|'|")|\]\s*TJ/.test(c)) text += ' ' + contentToText(c);
+      });
+      return text;
+    });
+  }
+  function parsePaystubText(text) {
+    var t = text.replace(/\s+/g, ' ');
+    var found = {};
+    if (/semi[\s-]?monthly|twice a month/i.test(t)) found.freq = '24';
+    else if (/bi[\s-]?weekly|every (?:two|2) weeks/i.test(t)) found.freq = '26';
+    else if (/\bweekly\b/i.test(t)) found.freq = '52';
+    else if (/\bmonthly\b/i.test(t)) found.freq = '12';
+    function amt(re) {
+      var m = t.match(re);
+      if (!m) return null;
+      var v = parseFloat(m[1].replace(/,/g, ''));
+      return v > 0 ? v : null;
+    }
+    var M = '\\$\\s?([0-9][0-9,]*(?:\\.[0-9]{1,2})?)';
+    var gross = amt(new RegExp('pay\\s*rate:?\\s*' + M, 'i')) ||
+      amt(new RegExp('gross\\s*(?:pay|earnings)[^$]{0,30}' + M, 'i')) ||
+      amt(new RegExp('\\bearnings\\b[^$]{0,30}' + M, 'i'));
+    var net = amt(new RegExp('net\\s*pay[^$]{0,30}' + M, 'i'));
+    var k401 = amt(new RegExp('401\\s*\\(?k\\)?[^$]{0,30}' + M, 'i'));
+    var hsa = amt(new RegExp('\\bhsa\\b[^$]{0,30}' + M, 'i'));
+    if (gross) found.gross = gross;
+    if (net) found.net = net;
+    if (k401) found.k401 = k401;
+    if (hsa) found.hsa = hsa;
+    return found;
+  }
+  var PS_FREQ_WORDS = { 52: 'weekly', 26: 'every 2 weeks', 24: 'twice a month', 12: 'monthly' };
+  function applyParsedPaystub(found) {
+    var status = document.getElementById('ps-file-status');
+    if (!found.net && !found.gross) {
+      status.textContent = 'Couldn’t find the numbers in that — type them in below instead.';
+      return;
+    }
+    var keys = ['freq', 'gross', 'net', 'k401', 'hsa'];
+    keys.forEach(function (k) { if (k in found) state.paystub[k] = found[k]; });
+    save();
+    syncInputs();
+    recalc();
+    document.querySelector('.paystub').open = true;
+    var got = [];
+    if (found.freq) got.push('paid ' + PS_FREQ_WORDS[found.freq]);
+    if (found.gross) got.push('gross ' + psMoney(found.gross));
+    if (found.net) got.push('net ' + psMoney(found.net));
+    if (found.k401) got.push('401(k) ' + psMoney(found.k401));
+    if (found.hsa) got.push('HSA ' + psMoney(found.hsa));
+    var missing = keys.filter(function (k) { return !(k in found); });
+    status.textContent = 'Read: ' + got.join(' · ') +
+      (missing.length ? '. Couldn’t find ' + missing.join(', ') + ' — add those by hand.' : '');
+  }
+  function readPaystubFile(f) {
+    var status = document.getElementById('ps-file-status');
+    if (!f) return;
+    if (/^image\//i.test(f.type)) {
+      status.textContent = 'That’s an image — I can only read PDFs or text. Type the numbers in below.';
+      return;
+    }
+    status.textContent = 'Reading…';
+    var isPdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
+    var reader = new FileReader();
+    if (isPdf) {
+      if (typeof DecompressionStream === 'undefined') {
+        status.textContent = 'This browser can’t read PDFs here — type the numbers in below.';
+        return;
+      }
+      reader.onload = function () {
+        extractPdfText(new Uint8Array(reader.result))
+          .then(function (text) { applyParsedPaystub(parsePaystubText(text)); })
+          .catch(function () { status.textContent = 'Couldn’t read that PDF — type the numbers in below.'; });
+      };
+      reader.readAsArrayBuffer(f);
+    } else {
+      reader.onload = function () { applyParsedPaystub(parsePaystubText(String(reader.result))); };
+      reader.readAsText(f);
+    }
+  }
+  document.getElementById('ps-file').addEventListener('change', function () {
+    readPaystubFile(this.files && this.files[0]);
+    this.value = '';
+  });
+  var psPanel = document.querySelector('.paystub');
+  psPanel.addEventListener('dragover', function (ev) { ev.preventDefault(); });
+  psPanel.addEventListener('drop', function (ev) {
+    ev.preventDefault();
+    readPaystubFile(ev.dataTransfer.files && ev.dataTransfer.files[0]);
+  });
+  psPanel.addEventListener('paste', function (ev) {
+    var txt = ev.clipboardData && ev.clipboardData.getData('text');
+    if (txt && txt.length > 120) {
+      ev.preventDefault();
+      applyParsedPaystub(parsePaystubText(txt));
+    }
+  });
 
   function splitCSVLine(line) {
     var cols = [], cur = '', inQ = false;

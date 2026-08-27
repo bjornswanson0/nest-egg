@@ -541,6 +541,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .paystub { margin: 14px 0 4px; }
 .paystub summary { cursor: pointer; font-size: 13px; color: var(--accent); }
 .paystub[open] summary { margin-bottom: 10px; }
+.paystub .import-row { flex-wrap: wrap; margin-bottom: 14px; }
 .ps-readout { margin: 12px 0 0; }
 .ps-readout:empty { display: none; }
 .ps-suggested::placeholder { color: var(--accent); opacity: .75; }
