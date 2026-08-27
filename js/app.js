@@ -387,6 +387,36 @@
     return total;
   }
 
+  /* ---------- paystub converter (per-check numbers → the monthly figures the app wants) ---------- */
+  document.getElementById('ps-apply').addEventListener('click', function () {
+    var checks = parseFloat(document.getElementById('ps-freq').value) || 24;
+    function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+    var gross = num('ps-gross'), net = num('ps-net'), k401 = num('ps-k401'), hsa = num('ps-hsa');
+    var status = document.getElementById('ps-status');
+    if (!net) { status.textContent = 'Net pay is the one required number.'; return; }
+    var toMonthly = checks / 12;
+    /* take-home counts payroll-deducted savings, per its own definition — add them back */
+    state.profile.takeHomeMonthly = Math.round((net + k401 + hsa) * toMonthly);
+    var parts = ['take-home ' + fmtMoneyFull(state.profile.takeHomeMonthly) + '/mo'];
+    if (gross) {
+      state.profile.annualIncome = Math.round(gross * checks);
+      parts.push('income ' + fmtMoneyFull(state.profile.annualIncome) + '/yr');
+      if (k401) {
+        state.k401.contribPct = Math.round(k401 / gross * 1000) / 10;
+        parts.push('401(k) ' + state.k401.contribPct + '% of pay');
+      }
+    }
+    if (hsa) {
+      state.hsa.eligible = true; /* payroll HSA deductions imply an HSA-eligible plan */
+      state.hsa.monthly = Math.round(hsa * toMonthly);
+      parts.push('HSA ' + fmtMoneyFull(state.hsa.monthly) + '/mo');
+    }
+    save();
+    syncInputs();
+    recalc();
+    status.textContent = 'Set: ' + parts.join(' · ');
+  });
+
   function splitCSVLine(line) {
     var cols = [], cur = '', inQ = false;
     for (var i = 0; i < line.length; i++) {

@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
 
@@ -97,6 +97,35 @@
             <span class="control"><span class="affix">$</span>
               <input type="number" data-bind="budget.lifestyleMonthly" min="0" step="50" inputmode="decimal" placeholder="1,000"></span></label>
         </div>
+        <details class="paystub">
+          <summary>Have a paystub? Convert it →</summary>
+          <p class="hint">Copy the numbers off one paycheck and we'll turn them into the monthly figures this page wants — with payroll-deducted savings added back where they belong.</p>
+          <div class="field-grid">
+            <label class="field"><span>I'm paid</span>
+              <select id="ps-freq">
+                <option value="52">Weekly</option>
+                <option value="26">Every 2 weeks</option>
+                <option value="24" selected>Twice a month</option>
+                <option value="12">Monthly</option>
+              </select></label>
+            <label class="field"><span>Gross pay per check <small>(before anything comes out)</small></span>
+              <span class="control"><span class="affix">$</span>
+                <input type="number" id="ps-gross" min="0" step="50" inputmode="decimal" placeholder="3,500"></span></label>
+            <label class="field"><span>Net pay per check <small>(what hits the bank)</small></span>
+              <span class="control"><span class="affix">$</span>
+                <input type="number" id="ps-net" min="0" step="50" inputmode="decimal" placeholder="2,400"></span></label>
+            <label class="field"><span>401(k) per check <small>(pre-tax or Roth)</small></span>
+              <span class="control"><span class="affix">$</span>
+                <input type="number" id="ps-k401" min="0" step="10" inputmode="decimal" placeholder="0"></span></label>
+            <label class="field"><span>HSA per check</span>
+              <span class="control"><span class="affix">$</span>
+                <input type="number" id="ps-hsa" min="0" step="10" inputmode="decimal" placeholder="0"></span></label>
+          </div>
+          <div class="import-row">
+            <button type="button" id="ps-apply" class="ghost-btn mini">Use these numbers</button>
+            <span class="import-status" id="ps-status"></span>
+          </div>
+        </details>
         <div class="budget-snap" id="budget-snap" aria-live="polite">
           <div class="bs-row"><span>Take-home</span><span class="amt" id="bs-takehome">—</span></div>
           <div class="bs-row"><span>− Essentials</span><span class="amt" id="bs-ess">—</span></div>
@@ -511,6 +540,6 @@
 
 <script src="js/engine.js?v=5"></script>
 <script src="js/charts.js?v=3"></script>
-<script src="js/app.js?v=16"></script>
+<script src="js/app.js?v=17"></script>
 </body>
 </html>

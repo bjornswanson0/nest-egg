@@ -538,6 +538,11 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .import-trigger { cursor: pointer; display: inline-block; }
 .import-status { font-size: 12px; color: var(--ink-2); font-style: italic; }
 
+.paystub { margin: 14px 0 4px; }
+.paystub summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+.paystub[open] summary { margin-bottom: 10px; }
+.paystub .import-row { margin-top: 14px; }
+
 .ghost-btn {
   font: inherit;
   font-size: 12px;

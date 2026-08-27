@@ -9,6 +9,7 @@
 Most retirement calculators project one account and ignore your credit card. Nest Egg starts with your budget and simulates your full financial picture month by month to retirement:
 
 - **Budget first** — take-home minus essentials, everything else, and debt minimums gives your monthly surplus. A running budget bar through the walkthrough shows how much of it you've allocated (and flags over-committing), and the coaching calls out any dollars going nowhere.
+- **Paystub converter** — copy the numbers off one paycheck (frequency, gross, net, 401(k), HSA) and it derives your annual income, true monthly take-home (payroll-deducted savings added back), 401(k) percentage, and monthly HSA contribution.
 - **All five account types** — 401(k) with employer match, Roth IRA, HSA, HYSA, and a taxable brokerage, each with its own balance, contributions, and expected return.
 - **Debt, done right** — multiple debts with APRs and minimums, paid down avalanche-style (highest APR first). When a debt dies, its old minimum payment rolls forward instead of vanishing.
 - **Two plans, one budget** — it runs *your* plan against a **recommended order** (employer match → high-interest debt → emergency fund → HSA → Roth IRA → max 401(k) → remaining debt → taxable brokerage). With no budget entered they spend identical dollars, so the gap is pure ordering; with one, the recommended plan also deploys the surplus your plan leaves idle — and says so.
