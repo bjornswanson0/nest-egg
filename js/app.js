@@ -21,6 +21,7 @@
     brokerage: { balance: '', monthly: '', returnPct: 7 },
     budget: { essentialsMonthly: '', lifestyleMonthly: '' },
     paystub: { freq: '24', gross: '', net: '', k401: '', hsa: '' },
+    snapshots: [],
     debts: [],
     extraDebtMonthly: '',
     growContrib: true,
@@ -41,6 +42,7 @@
     brokerage: { balance: 15000, monthly: 250, returnPct: 7 },
     budget: { essentialsMonthly: 2350, lifestyleMonthly: 700 },
     paystub: { freq: '24', gross: '', net: '', k401: '', hsa: '' },
+    snapshots: [],
     debts: [
       { name: 'Credit card', kind: 'card', balance: 6200, aprPct: 23.5, minPayment: 140 },
       { name: 'Student loan', kind: 'student', balance: 18000, aprPct: 4.5, minPayment: 190 },
@@ -325,9 +327,11 @@
         if (typeof brok !== 'number' || isNaN(brok)) throw new Error('missing brokerageValue');
         state.brokerage = state.brokerage || {};
         state.brokerage.balance = brok;
+        addSnapshot('brokerage', brok, 'schwab-json');
         if (typeof roth === 'number' && !isNaN(roth)) {
           state.roth = state.roth || {};
           state.roth.balance = roth;
+          addSnapshot('roth', roth, 'schwab-json');
         }
         save();
         syncInputs();
@@ -355,6 +359,7 @@
         if (!total || total <= 0) throw new Error('no balance found');
         state.k401 = state.k401 || {};
         state.k401.balance = total;
+        addSnapshot('k401', total, 'merrill-csv');
         save();
         syncInputs();
         recalc();
@@ -722,6 +727,196 @@
       applyParsedPaystub(parsePaystubText(txt));
     }
   });
+
+  /* ---------- statement inbox: any document → the right parser, plus a dated snapshot.
+     Balances are facts and write directly; plan choices (paystubs) stay ghost-only. ---------- */
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function addSnapshot(acct, amt, source) {
+    if (!(amt > 0)) return;
+    state.snapshots = state.snapshots || [];
+    var d = todayStr();
+    state.snapshots = state.snapshots.filter(function (sn) { return !(sn.d === d && sn.acct === acct); });
+    state.snapshots.push({ d: d, acct: acct, amt: Math.round(amt * 100) / 100, src: source });
+  }
+  function finishIngest(status, label, bal) {
+    save();
+    syncInputs();
+    recalc();
+    status.textContent = 'Updated your ' + label + ' balance to ' + psMoney(bal) + ' and logged a snapshot below.';
+  }
+  function routeStatementText(text, status) {
+    var t = text.replace(/\s+/g, '').toLowerCase();
+    function firstAmt(patterns) {
+      for (var i = 0; i < patterns.length; i++) {
+        var m = t.match(new RegExp(patterns[i] + '\\$([0-9][0-9,]*(?:\\.[0-9]{1,2})?)'));
+        if (m) {
+          var v = parseFloat(m[1].replace(/,/g, ''));
+          if (v > 0) return v;
+        }
+      }
+      return null;
+    }
+    if (/payfrequency|netpay|payperiod|earningsstatement/.test(t)) {
+      applyParsedPaystub(parsePaystubText(text));
+      status.textContent = 'That’s a paystub — routed to the budget step’s converter (its readout has the details). Paystubs only ghost-suggest, never write.';
+      return;
+    }
+    if (/merrill|benefitsonline|vestedbalance/.test(t)) {
+      var bal = firstAmt(['vestedbalance:?', 'endingbalance(?:on[0-9/]+)?:?', 'marketvalue:?', 'totalbalance:?']);
+      if (bal) {
+        state.k401.balance = bal;
+        addSnapshot('k401', bal, 'merrill');
+        finishIngest(status, '401(k)', bal);
+      } else {
+        status.textContent = 'Looks like a Merrill statement, but no balance line was found in it.';
+      }
+      return;
+    }
+    if (/schwab/.test(t)) {
+      var acct = /rothira|rothcontributory/.test(t) ? 'roth' : 'brokerage';
+      var bal2 = firstAmt(['totalaccountvalue:?', 'endingaccountvalue:?', 'endingvalue:?', 'accountvalue:?', 'totalvalue:?']);
+      if (bal2) {
+        state[acct].balance = bal2;
+        addSnapshot(acct, bal2, 'schwab');
+        finishIngest(status, acct === 'roth' ? 'Roth IRA' : 'brokerage', bal2);
+      } else {
+        status.textContent = 'Looks like a Schwab statement, but no balance line was found in it.';
+      }
+      return;
+    }
+    status.textContent = 'Read the document fine, but couldn’t tell what it is — expected a paystub, Merrill, or Schwab statement.';
+  }
+  function readInboxFile(f) {
+    var status = document.getElementById('inbox-status');
+    if (!f) return;
+    if (/^image\//i.test(f.type)) {
+      status.textContent = 'That’s an image — I can read PDFs, CSVs, JSON, or text.';
+      return;
+    }
+    status.textContent = 'Reading…';
+    var name = f.name || '';
+    var reader = new FileReader();
+    if (/pdf/i.test(f.type) || /\.pdf$/i.test(name)) {
+      if (typeof DecompressionStream === 'undefined') {
+        status.textContent = 'This browser can’t read PDFs here.';
+        return;
+      }
+      reader.onload = function () {
+        extractPdfText(new Uint8Array(reader.result))
+          .then(function (text) { routeStatementText(text, status); })
+          .catch(function () { status.textContent = 'Couldn’t read that PDF.'; });
+      };
+      reader.readAsArrayBuffer(f);
+    } else if (/\.csv$/i.test(name) || /csv/i.test(f.type)) {
+      reader.onload = function () {
+        try {
+          var total = parseMerrillCSV(String(reader.result));
+          if (!(total > 0)) throw new Error('none');
+          state.k401.balance = total;
+          addSnapshot('k401', total, 'merrill-csv');
+          finishIngest(status, '401(k)', total);
+        } catch (e) { status.textContent = 'Couldn’t find balances in that CSV.'; }
+      };
+      reader.readAsText(f);
+    } else if (/\.json$/i.test(name) || /json/i.test(f.type)) {
+      reader.onload = function () {
+        try {
+          var obj = JSON.parse(String(reader.result));
+          var did = [];
+          if (typeof obj.brokerageValue === 'number' && !isNaN(obj.brokerageValue)) {
+            state.brokerage.balance = obj.brokerageValue;
+            addSnapshot('brokerage', obj.brokerageValue, 'schwab-json');
+            did.push('brokerage ' + psMoney(obj.brokerageValue));
+          }
+          if (typeof obj.rothValue === 'number' && !isNaN(obj.rothValue)) {
+            state.roth.balance = obj.rothValue;
+            addSnapshot('roth', obj.rothValue, 'schwab-json');
+            did.push('Roth ' + psMoney(obj.rothValue));
+          }
+          if (!did.length) throw new Error('none');
+          save();
+          syncInputs();
+          recalc();
+          status.textContent = 'Updated ' + did.join(' · ') + ' and logged snapshots below.';
+        } catch (e) { status.textContent = 'That JSON isn’t a recognized export.'; }
+      };
+      reader.readAsText(f);
+    } else {
+      reader.onload = function () { routeStatementText(String(reader.result), status); };
+      reader.readAsText(f);
+    }
+  }
+  document.getElementById('inbox-file').addEventListener('change', function () {
+    readInboxFile(this.files && this.files[0]);
+    this.value = '';
+  });
+  var inboxCard = document.getElementById('inbox-card');
+  inboxCard.addEventListener('dragover', function (ev) { ev.preventDefault(); });
+  inboxCard.addEventListener('drop', function (ev) {
+    ev.preventDefault();
+    readInboxFile(ev.dataTransfer.files && ev.dataTransfer.files[0]);
+  });
+
+  /* ---------- tracking: the snapshot history, grouped per account ---------- */
+  var ACCT_LABELS = { k401: '401(k)', roth: 'Roth IRA', hsa: 'HSA', hysa: 'HYSA', brokerage: 'Brokerage' };
+  function renderTracking() {
+    var card = document.getElementById('tracking-card');
+    var host = document.getElementById('tracking-body');
+    var snaps = (state.snapshots || []).slice().sort(function (a, b) { return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+    if (!snaps.length) { card.hidden = true; return; }
+    card.hidden = false;
+    host.textContent = '';
+    var byAcct = {};
+    snaps.forEach(function (sn) { (byAcct[sn.acct] = byAcct[sn.acct] || []).push(sn); });
+    Object.keys(byAcct).forEach(function (acct) {
+      var rows = byAcct[acct];
+      var latest = rows[rows.length - 1];
+      var h = document.createElement('h3');
+      h.className = 'ms-title';
+      h.textContent = (ACCT_LABELS[acct] || acct) + ' — ' + psMoney(latest.amt) + ' as of ' + latest.d;
+      host.appendChild(h);
+      var tbl = document.createElement('table');
+      tbl.className = 'mini-table track-table';
+      var tb = document.createElement('tbody');
+      rows.forEach(function (sn, i) {
+        var tr = document.createElement('tr');
+        function td(text, cls) {
+          var c = document.createElement('td');
+          c.textContent = text;
+          if (cls) c.className = cls;
+          tr.appendChild(c);
+          return c;
+        }
+        td(sn.d);
+        td(psMoney(sn.amt));
+        if (i > 0) {
+          var delta = sn.amt - rows[i - 1].amt;
+          td((delta >= 0 ? '+' : '−') + psMoney(Math.abs(delta)), delta >= 0 ? 'track-up' : 'track-down');
+        } else {
+          td('first snapshot', 'track-first');
+        }
+        var cell = document.createElement('td');
+        cell.className = 'track-remove';
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'linklike';
+        del.textContent = 'remove';
+        del.addEventListener('click', function () {
+          state.snapshots = state.snapshots.filter(function (x) { return x !== sn; });
+          save();
+          renderTracking();
+        });
+        cell.appendChild(del);
+        tr.appendChild(cell);
+        tb.appendChild(tr);
+      });
+      tbl.appendChild(tb);
+      host.appendChild(tbl);
+    });
+  }
 
   function splitCSVLine(line) {
     var cols = [], cur = '', inQ = false;
@@ -1123,14 +1318,27 @@
         'Paying it down is a guaranteed, tax-free ' + topApr + '% return — better than the ~' + (inp.k401.returnPct || 7) + '% you expect from investments. That’s why it sits right after the match in the recommended order.');
     }
 
+    /* calendar-aware catch-up: what the remaining months must average to hit an annual cap,
+       assuming the current monthly rate has run since January */
+    function paceLine(monthly, limit) {
+      var now = new Date(), monthsIn = now.getMonth() + 1, monthsLeft = 12 - monthsIn;
+      if (monthsLeft < 1) return '';
+      var need = (limit - monthly * monthsIn) / monthsLeft;
+      if (need <= monthly + 1) return '';
+      return ' To max it by December 31 (assuming that rate since January), the last ' + monthsLeft +
+        (monthsLeft === 1 ? ' month needs' : ' months need') + ' about ' + fmtMoneyFull(need) + '/mo.';
+    }
+
     if (inp.hsa.eligible && hsaGap > 50 && inp.hsa.monthly > 0) {
       add('info', 'i', 'Your HSA has ' + fmtMoney(hsaGap) + '/yr of room left',
-        'You’re contributing ' + fmtMoney(hsaAnnual) + ' toward the ' + fmtMoney(inp.limits.hsa) + ' cap. The HSA is the only triple-tax-free account, so filling it usually beats extra taxable investing.');
+        'You’re contributing ' + fmtMoney(hsaAnnual) + ' toward the ' + fmtMoney(inp.limits.hsa) + ' cap. The HSA is the only triple-tax-free account, so filling it usually beats extra taxable investing.' +
+        paceLine(inp.hsa.monthly, inp.limits.hsa));
     }
 
     if (rothGap > 100 && inp.roth.monthly > 0) {
       add('info', 'i', 'Your Roth IRA has ' + fmtMoney(rothGap) + '/yr of room left',
-        'You’re funding ' + fmtMoney(rothAnnual) + ' of the ' + fmtMoney(inp.limits.ira) + ' limit. Every dollar you add grows and comes out tax-free — hard to beat while you’re young.');
+        'You’re funding ' + fmtMoney(rothAnnual) + ' of the ' + fmtMoney(inp.limits.ira) + ' limit. Every dollar you add grows and comes out tax-free — hard to beat while you’re young.' +
+        paceLine(inp.roth.monthly, inp.limits.ira));
     }
 
     var sl = inp.debts.filter(function (d) { return d.kind === 'student' && d.balance > 0; });
@@ -1813,6 +2021,7 @@
     updateHsaHint(); /* input-column hints refresh even before ages are set */
     updateMatchHint();
     updatePaystubHints();
+    renderTracking();
     updateBudgetSnap();
     updateBudgetBar();
     var p = state.profile;

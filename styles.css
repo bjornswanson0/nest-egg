@@ -546,6 +546,14 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .ps-readout:empty { display: none; }
 .ps-suggested::placeholder { color: var(--accent); opacity: .75; }
 
+/* tracking card */
+.track-table { width: 100%; margin: 4px 0 14px; }
+.track-table td { padding: 5px 10px; }
+.track-up { color: var(--good-text); }
+.track-down { color: var(--crit-text); }
+.track-first { color: var(--muted); font-style: italic; }
+.track-remove { text-align: right; }
+
 .ghost-btn {
   font: inherit;
   font-size: 12px;

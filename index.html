@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=21">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
 
@@ -403,6 +403,27 @@
           <div id="summary-grid" class="summary-grid"></div>
         </section>
 
+        <section class="card" id="inbox-card">
+          <div class="card-head">
+            <div><h2>Drop in a statement</h2></div>
+            <span class="hint">read in your browser — nothing is uploaded, ever</span>
+          </div>
+          <p class="hint">Paystub PDFs feed the budget step’s ghost suggestions. Merrill and Schwab statements (PDF, CSV, or export) update the matching balance and get logged as a dated snapshot below, so your real numbers build a history.</p>
+          <div class="import-row">
+            <label class="ghost-btn mini import-trigger" for="inbox-file">Load a document →</label>
+            <input type="file" id="inbox-file" accept=".pdf,.csv,.json,.txt,application/pdf,text/csv,application/json,text/plain" hidden>
+            <span class="import-status" id="inbox-status">or drag it onto this card</span>
+          </div>
+        </section>
+
+        <section class="card" id="tracking-card" hidden>
+          <div class="card-head">
+            <div><h2>Tracking</h2></div>
+            <span class="hint">your real balances over time, from the statements you’ve dropped</span>
+          </div>
+          <div id="tracking-body"></div>
+        </section>
+
         <section class="card" id="insights-card">
           <div class="card-head">
             <h2>Coaching corner</h2>
@@ -543,6 +564,6 @@
 
 <script src="js/engine.js?v=5"></script>
 <script src="js/charts.js?v=3"></script>
-<script src="js/app.js?v=20"></script>
+<script src="js/app.js?v=21"></script>
 </body>
 </html>
