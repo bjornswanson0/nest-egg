@@ -81,7 +81,25 @@
   function save() {
     if (demoMode) return; /* demo edits never clobber real saved numbers */
     store.set('ne_state', JSON.stringify(state));
+    updateLedgerLinks();
   }
+
+  /* ---------- Payday Ledger links: paystub + budget numbers ride the #fragment as ghost hints ---------- */
+  function updateLedgerLinks() {
+    var links = document.querySelectorAll('a.ledger-link');
+    if (!links.length) return;
+    var parts = [];
+    function add(k, v) { var num = parseFloat(v); if (isFinite(num) && num > 0) parts.push(k + '=' + num); }
+    if (!demoMode) {
+      var ps = state.paystub || {}, bd = state.budget || {}, pf = state.profile || {};
+      add('net', ps.net); add('gross', ps.gross); add('freq', ps.freq); add('k401', ps.k401); add('hsa', ps.hsa);
+      add('th', pf.takeHomeMonthly); add('ess', bd.essentialsMonthly); add('fun', bd.lifestyleMonthly);
+    }
+    var base = 'https://claude.ai/code/artifact/c1716b25-3b26-45fe-9c6f-95dcc95814d4';
+    var href = parts.length ? base + '#' + parts.join('&') : base;
+    for (var i = 0; i < links.length; i++) links[i].setAttribute('href', href);
+  }
+  updateLedgerLinks();
 
   function getPath(path) {
     var parts = path.split('.'), o = state;
