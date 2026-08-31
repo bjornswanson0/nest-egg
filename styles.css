@@ -1170,3 +1170,7 @@ details[open] > summary::before { content: '▾'; }
   /* wrapped multi-row toolbar: soften the pill and let it scroll away */
   .results-topbar { position: static; border-radius: 18px; padding: 8px 10px; }
 }
+
+/* header entry point to the Payday Ledger */
+.site-header .header-links { margin-top: 16px; }
+.site-header .ghost-btn { text-decoration: none; display: inline-block; }
