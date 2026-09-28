@@ -545,6 +545,9 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .ps-readout { margin: 12px 0 0; }
 .ps-readout:empty { display: none; }
 .ps-suggested::placeholder { color: var(--accent); opacity: .75; }
+.plan-hints { border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px 10px; margin: 0 0 18px; }
+.plan-hints .hint { margin-bottom: 8px; }
+.plan-hints-actions { display: flex; gap: 14px; align-items: center; margin: 0; }
 
 /* tracking card */
 .track-table { width: 100%; margin: 4px 0 14px; }

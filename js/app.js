@@ -119,6 +119,68 @@
     recalcTimer = setTimeout(recalc, 120);
   }
 
+  /* ---------- plan hints: a link can carry a monthly plan in its #fragment (a budget tracker hands numbers over).
+     Like paystubs they only ghost-suggest; "Use these numbers" is the one explicit write. ---------- */
+  var PLAN_KEYS = {
+    inc: 'profile.annualIncome', th: 'profile.takeHomeMonthly', ess: 'budget.essentialsMonthly', fun: 'budget.lifestyleMonthly',
+    k401pct: 'k401.contribPct', roth: 'roth.monthly', hsa: 'hsa.monthly', hysa: 'hysa.monthly', ef: 'hysa.efTarget',
+    brok: 'brokerage.monthly', debt: 'extraDebtMonthly'
+  };
+  var PLAN_SAY = {
+    inc: function (v) { return 'income ' + psMoney(v) + '/yr'; },
+    th: function (v) { return 'take-home ' + psMoney(v) + '/mo'; },
+    ess: function (v) { return 'essentials ' + psMoney(v) + '/mo'; },
+    fun: function (v) { return 'everything else ' + psMoney(v) + '/mo'; },
+    k401pct: function (v) { return '401(k) ' + v + '% of pay'; },
+    roth: function (v) { return 'Roth IRA ' + psMoney(v) + '/mo'; },
+    hsa: function (v) { return 'HSA ' + psMoney(v) + '/mo'; },
+    hysa: function (v) { return 'savings ' + psMoney(v) + '/mo'; },
+    ef: function (v) { return 'emergency-fund target ' + psMoney(v); },
+    brok: function (v) { return 'brokerage ' + psMoney(v) + '/mo'; },
+    debt: function (v) { return 'extra debt payment ' + psMoney(v) + '/mo'; }
+  };
+  function readPlanHints(hash) {
+    var out = {}, any = false;
+    String(hash || '').replace(/^#/, '').split('&').forEach(function (kv) {
+      var i = kv.indexOf('='); if (i < 0) return;
+      var k = kv.slice(0, i), v = parseFloat(kv.slice(i + 1));
+      if (PLAN_KEYS[k] && isFinite(v) && v >= 0) { out[k] = v; any = true; }
+    });
+    return any ? out : null;
+  }
+  function clearPlanHash() {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; }
+  }
+  function applyPlanHints() {
+    var box = document.getElementById('plan-hints'); if (!box) return;
+    var hints = demoMode ? null : readPlanHints(location.hash);
+    var keys = hints ? Object.keys(hints) : [];
+    function each(fn) { keys.forEach(function (k) { var input = document.querySelector('[data-bind="' + PLAN_KEYS[k] + '"]'); if (input) fn(input, k); }); }
+    function unmark() {
+      each(function (input) {
+        input.classList.remove('ps-suggested'); input.removeAttribute('title');
+        if (input.dataset.planPh !== undefined) { input.placeholder = input.dataset.planPh; delete input.dataset.planPh; }
+      });
+    }
+    if (!keys.length) { box.hidden = true; return; }
+    each(function (input, k) {
+      if (input.dataset.planPh === undefined) input.dataset.planPh = input.placeholder;
+      input.placeholder = hints[k].toLocaleString('en-US');
+      input.title = 'From the plan this link carried: ' + PLAN_SAY[k](hints[k]);
+      input.classList.add('ps-suggested');
+    });
+    document.getElementById('plan-hints-text').textContent = 'This link carried a monthly plan: ' +
+      keys.map(function (k) { return PLAN_SAY[k](hints[k]); }).join(' · ') +
+      '. The matching boxes show these as ghost numbers. Nothing is filled in unless you say so.';
+    box.hidden = false;
+    document.getElementById('plan-hints-use').onclick = function () {
+      keys.forEach(function (k) { setPath(PLAN_KEYS[k], hints[k]); });
+      if (hints.hsa > 0) state.hsa.eligible = true;
+      unmark(); save(); syncInputs(); queueRecalc(); clearPlanHash(); box.hidden = true;
+    };
+    document.getElementById('plan-hints-dismiss').onclick = function () { unmark(); clearPlanHash(); box.hidden = true; };
+  }
+
   document.querySelectorAll('[data-bind]').forEach(function (input) {
     var path = input.getAttribute('data-bind');
     input.addEventListener('input', function () {
@@ -130,6 +192,7 @@
     });
   });
   syncInputs(); /* initial values; also re-run after adopting the recommended plan */
+  applyPlanHints();
 
   /* ---------- debts ---------- */
   var debtList = document.getElementById('debt-list');
@@ -2004,6 +2067,7 @@
     el('bs-min').textContent = fmtMoneyFull(bf.minimums);
     var totalRow = el('bs-total-row'), total = el('bs-total'), note = el('bs-note');
     if (!bf.known) {
+      el('bs-split').hidden = true;
       total.textContent = '—';
       totalRow.className = 'bs-row bs-total';
       note.textContent = 'Fill in take-home and essentials to see your monthly surplus.';
@@ -2011,6 +2075,12 @@
     }
     total.textContent = fmtMoneyFull(bf.surplus) + '/mo';
     totalRow.className = 'bs-row bs-total ' + (bf.surplus > 0 ? 'good' : 'crit');
+    var split = el('bs-split');
+    split.hidden = false;
+    split.textContent = 'Two ways to split ' + fmtMoneyFull(th) + ': the classic 50/30/20 is needs ' + fmtMoneyFull(th * 0.5) +
+      ', wants ' + fmtMoneyFull(th * 0.3) + ', future ' + fmtMoneyFull(th * 0.2) +
+      '. Debt-free and building? 45/15/40 is needs ' + fmtMoneyFull(th * 0.45) + ', wants ' + fmtMoneyFull(th * 0.15) +
+      ', future ' + fmtMoneyFull(th * 0.4) + '.';
     if (bf.surplus <= 0) {
       note.textContent = 'You’re spending everything you bring home. The walkthrough still works — but the plan will lean on trimming the numbers above.';
     } else {
