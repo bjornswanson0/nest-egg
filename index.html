@@ -52,6 +52,10 @@
       <p class="wiz-count"><span id="wiz-count">Step 1 of 9</span></p>
     </div>
 
+    <div class="plan-hints" id="plan-hints" hidden>
+      <p class="hint" id="plan-hints-text"></p>
+      <p class="plan-hints-actions"><button type="button" class="ghost-btn mini" id="plan-hints-use">Use these numbers</button> <button type="button" class="linklike" id="plan-hints-dismiss">Keep what I have</button></p>
+    </div>
     <div id="wiz-budget" class="wiz-budget" hidden>
       <div class="wb-line"><span id="wb-label"></span><span class="wb-amt" id="wb-amt"></span></div>
       <div class="wb-bar" aria-hidden="true"><span class="wb-fill" id="wb-fill"></span></div>
@@ -87,10 +91,6 @@
         <p class="step-eyebrow">Your budget</p>
         <h2 class="step-q">What does a normal month look like?</h2>
         <p class="step-sub">Three rough numbers. Whatever's left is your monthly surplus — and the rest of this walkthrough is about pointing it at the right accounts.</p>
-        <div class="plan-hints" id="plan-hints" hidden>
-          <p class="hint" id="plan-hints-text"></p>
-          <p class="plan-hints-actions"><button type="button" class="ghost-btn mini" id="plan-hints-use">Use these numbers</button> <button type="button" class="linklike" id="plan-hints-dismiss">Keep what I have</button></p>
-        </div>
         <div class="field-grid">
           <label class="field span2"><span>Monthly take-home pay <button type="button" class="help-btn" data-help="takehome" aria-label="What counts as take-home pay?">?</button></span>
             <span class="control"><span class="affix">$</span>
