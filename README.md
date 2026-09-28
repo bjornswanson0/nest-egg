@@ -27,7 +27,7 @@ Everything runs in your browser. Your numbers are saved to `localStorage` on you
 
 ## Stack
 
-Plain HTML, CSS, and JavaScript — no framework, no build step, no dependencies. Charts are hand-rolled SVG with crosshair tooltips, keyboard navigation, and a full table view. Light and dark themes.
+Plain HTML, CSS, and JavaScript — no framework, no build step, no dependencies. Charts are hand-rolled SVG with crosshair tooltips, keyboard navigation, and a full table view. Light and dark themes: off-white paper or near-black, ink in three tonal steps, one cobalt signal color, and the yolk in the wordmark as the only warm mark. Type is Instrument Sans, with Geist Mono for every figure so columns line up like a statement.
 
 ## Tests
 
