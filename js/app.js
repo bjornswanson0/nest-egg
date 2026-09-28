@@ -123,9 +123,13 @@
      Like paystubs they only ghost-suggest; "Use these numbers" is the one explicit write. ---------- */
   var PLAN_KEYS = {
     inc: 'profile.annualIncome', th: 'profile.takeHomeMonthly', ess: 'budget.essentialsMonthly', fun: 'budget.lifestyleMonthly',
-    k401pct: 'k401.contribPct', roth: 'roth.monthly', hsa: 'hsa.monthly', hysa: 'hysa.monthly', ef: 'hysa.efTarget',
+    k401pct: 'k401.contribPct', roth: 'roth.monthly', hsam: 'hsa.monthly', hysa: 'hysa.monthly', ef: 'hysa.efTarget',
     brok: 'brokerage.monthly', debt: 'extraDebtMonthly'
   };
+  /* per-paycheck facts (same keys the Payday Ledger link uses); these feed the converter like a dropped paystub */
+  var STUB_KEYS = { freq: 1, gross: 1, net: 1, k401: 1, hsa: 1 };
+  /* binds whose ghost numbers the paystub converter already manages */
+  var STUB_MANAGED = { 'profile.takeHomeMonthly': 1, 'profile.annualIncome': 1, 'k401.contribPct': 1, 'hsa.monthly': 1 };
   var PLAN_SAY = {
     inc: function (v) { return 'income ' + psMoney(v) + '/yr'; },
     th: function (v) { return 'take-home ' + psMoney(v) + '/mo'; },
@@ -133,28 +137,35 @@
     fun: function (v) { return 'everything else ' + psMoney(v) + '/mo'; },
     k401pct: function (v) { return '401(k) ' + v + '% of pay'; },
     roth: function (v) { return 'Roth IRA ' + psMoney(v) + '/mo'; },
-    hsa: function (v) { return 'HSA ' + psMoney(v) + '/mo'; },
+    hsam: function (v) { return 'HSA ' + psMoney(v) + '/mo'; },
     hysa: function (v) { return 'savings ' + psMoney(v) + '/mo'; },
     ef: function (v) { return 'emergency-fund target ' + psMoney(v); },
     brok: function (v) { return 'brokerage ' + psMoney(v) + '/mo'; },
     debt: function (v) { return 'extra debt payment ' + psMoney(v) + '/mo'; }
   };
   function readPlanHints(hash) {
-    var out = {}, any = false;
+    var plan = {}, stub = {}, any = false;
     String(hash || '').replace(/^#/, '').split('&').forEach(function (kv) {
       var i = kv.indexOf('='); if (i < 0) return;
       var k = kv.slice(0, i), v = parseFloat(kv.slice(i + 1));
-      if (PLAN_KEYS[k] && isFinite(v) && v >= 0) { out[k] = v; any = true; }
+      if (!isFinite(v) || v < 0) return;
+      if (PLAN_KEYS[k]) { plan[k] = v; any = true; }
+      else if (STUB_KEYS[k]) { stub[k] = (k === 'freq') ? String(Math.round(v)) : v; any = true; }
     });
-    return any ? out : null;
+    return any ? { plan: plan, stub: stub } : null;
   }
   function clearPlanHash() {
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; }
   }
   function applyPlanHints() {
     var box = document.getElementById('plan-hints'); if (!box) return;
-    var hints = demoMode ? null : readPlanHints(location.hash);
-    var keys = hints ? Object.keys(hints) : [];
+    var read = demoMode ? null : readPlanHints(location.hash);
+    var hints = read ? read.plan : null, stub = read ? read.stub : {};
+    var hasStub = !!(stub.net || stub.gross);
+    if (hasStub) applyParsedPaystub(stub);   /* paycheck facts write, like a dropped PDF; the converter opens with them */
+    var keys = hints ? Object.keys(hints).filter(function (k) { return !(hasStub && STUB_MANAGED[PLAN_KEYS[k]]); }) : [];
+    if (!keys.length && !hasStub) { box.hidden = true; return; }
+    if (!keys.length) { clearPlanHash(); box.hidden = true; showWizard(1); return; }
     function each(fn) { keys.forEach(function (k) { var input = document.querySelector('[data-bind="' + PLAN_KEYS[k] + '"]'); if (input) fn(input, k); }); }
     function unmark() {
       each(function (input) {
@@ -169,10 +180,11 @@
       input.title = 'From the plan this link carried: ' + PLAN_SAY[k](hints[k]);
       input.classList.add('ps-suggested');
     });
-    document.getElementById('plan-hints-text').textContent = 'This link carried a monthly plan: ' +
+    document.getElementById('plan-hints-text').textContent = (hasStub ? 'This link carried a paycheck (now in the converter below, with its ghost numbers) and a monthly plan: ' : 'This link carried a monthly plan: ') +
       keys.map(function (k) { return PLAN_SAY[k](hints[k]); }).join(' · ') +
       '. The matching boxes show these as ghost numbers. Nothing is filled in unless you say so.';
     box.hidden = false;
+    showWizard(1);
     document.getElementById('plan-hints-use').onclick = function () {
       keys.forEach(function (k) { setPath(PLAN_KEYS[k], hints[k]); });
       if (hints.hsa > 0) state.hsa.eligible = true;
@@ -192,7 +204,6 @@
     });
   });
   syncInputs(); /* initial values; also re-run after adopting the recommended plan */
-  applyPlanHints();
 
   /* ---------- debts ---------- */
   var debtList = document.getElementById('debt-list');
@@ -2363,4 +2374,5 @@
     if (complete) showResults();
     else showWizard(0);
   })();
+  applyPlanHints();
 })();
